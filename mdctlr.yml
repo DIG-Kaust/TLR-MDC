@@ -1,0 +1,20 @@
+name: mdctlrenv
+channels:
+  - defaults
+  - conda-forge
+  - anaconda
+dependencies:
+  - python=3.9
+  - pip
+  - numpy
+  - scipy
+  - matplotlib
+  - pylops
+  - ipython
+  - jupyter
+  - pip:
+    - python-dotenv
+    - hilbertcurve
+    - pymorton
+    - mpi4py
+    - cupy-cuda115
