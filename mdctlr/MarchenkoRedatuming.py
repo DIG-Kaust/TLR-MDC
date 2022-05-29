@@ -41,7 +41,7 @@ def main(parser):
     ######### INPUT PARAMS #########
     parser.add_argument("--AuxFile", type=str, default="AuxFile.npz", help="File with Auxiliar information for Mck redatuming")
     parser.add_argument("--MVMType", type=str, default="Dense", help="Type of MVM: Dense, TLR")
-    parser.add_argument("--TLRType", type=str, default="fp32", help="TLR Precision: fp32, fp16, fp16int8, int8")
+    parser.add_argument("--TLRType", type=str, default="fp32", help="TLR Precision: fp32, fp16, int8")
     parser.add_argument("--bandlen", type=int, default=10, help="TLR Band length")
     parser.add_argument("--nfmax", type=int, default=150, help="TLR Number of frequencies")
     parser.add_argument("--OrderType", type=str, default="normal", help="Matrix reordering method: normal, l1, hilbert")

@@ -6,21 +6,17 @@ setup(
     name='mdctlr',
     packages=[
         'mdctlr',
-        'mdctlr/inversion',
+        'mdctlr/inversiondist',
         'mdctlr/tlrmvm'
         ],
-    entry_points = {
-        'console_scripts': [
-            'mdctlr.caldatasize = mdctlr.calculatedatasize:main',
-        ],
-    },
     install_requires=[
     "numpy",
     "scipy",
     "matplotlib",
     "pymorton",
     "hilbertcurve",
-    "mpi4py"
+    "mpi4py",
+    "pylops"
     ],
     version='0.0.1'
 )
