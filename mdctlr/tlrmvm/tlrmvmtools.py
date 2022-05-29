@@ -229,10 +229,6 @@ class TLRMVM_Util:
                 x.T.tofile(f)
         ranklist.tofile(rfile)
 
-        # save precarray
-        precarrayfile = join(uvsavepath, 'precarray', "{}_PrecArray_nb{}.bin".format(self.problemname, nb, acc))
-        precarray.tofile(precarrayfile)
-        print("precarrayfile ", precarrayfile)
 
     def printdatainfo(self):
         print("Description of Dataset: ")
