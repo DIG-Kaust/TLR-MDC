@@ -17,7 +17,6 @@ situated in [this repository](TLR-MVM REPO).
 This repository is organized as follows:
 
 - **mdctlr**: python library containing routines for tlr-based multidimensional convolution and its use in seismic inverse problem
-- **apps**: set of python scripts implementing various seismic applications (Marchenko redatuming, Marchenko demultiple, MDD)
 - **scripts**: set of shell scripts used to run the various applications on standard workstations and KAUST supercomputer
 - **install**: set of shell scripts used in the installation process
 
@@ -29,30 +28,59 @@ root folder. The code will detect this environment file and load the variables i
 A sample `.env` file is:
 
 ```
-FIG_PATH=/home/$USER//TLR-MDC_figures
-STORE_PATH=/home/$USER/Data
-PROJECT_ROOT=/home/$USER/TLR-MDC
-PYTHONPATH=/home/$USER/TLR-MDC/:/home/$USER/TLR-MDC/tlrmvm-dev/build/lib.linux-x86_64-3.9:
+FIG_PATH=$HOME/TLRMDCfigures
+STORE_PATH=$YOUR_DATASET_PATH
 ```
 
-where:
--`FIG_PATH`: directory where you want to save your figures.
--`STORE_PATH`: root directory containing the seismic dataset.
--`PROJECT_ROOT`: directory of this repo.
--`PYTHONPATH`: directory of the TLR-MDC python library of this repo (and the tlrmvm build directory).
+- `FIG_PATH`: directory where you want to save your figures.
+- `STORE_PATH`: root directory containing the seismic dataset.
 
 
 ## Installation instructions
 
-The installation process involves 2 separate step:
+First install spack and dependencies in `install` folder.
 
-### Installation of tlrmvm
+Then load dependencies of spack.
+```
+spack load intel-mkl cmake cuda openmpi
+```
 
-see https://github.com/ecrc/tlrmvm
+Then clone the TLR-MVM library.
+```
+git clone --recursive git@github.com:ecrc/tlrmvm.git
+```
 
-### Installation of mdctlr
+Install TLR-MVM
+```
+BUILD_CUDA=ON python setup.py build
+```
 
-see https://www.youtube.com/watch?v=ERRvsPTSn1M
+The library will be installed into `build` folder.
+go to directory `build/libxxx` and put this build directory 
+into your PYTHONPATH.
+```
+(base) hongy0a@vulture:~/tlrmvm/build/lib.linux-x86_64-3.9$ ls
+libtlrmvmcpulib.so  libtlrmvmcudalib.so  pytlrmvm  TLRMVMpy.cpython-39-x86_64-linux-gnu.so
+(base) hongy0a@vulture:~/tlrmvm/build/lib.linux-x86_64-3.9$ export PYTHONPATH=$PYTHONPATH:$(pwd)
+(base) hongy0a@vulture:~/tlrmvm/build/lib.linux-x86_64-3.9$
+```
+
+Then clone TLR-MDC library and put TLR-MDC root directory 
+into your PYTHONPATH.
+
+
+```
+export PYTHONPATH=$PYTHONPATH:$(pwd)
+```
+
+The installation finishes.
+
+We also have an installation video on Youtube.
+
+See https://www.youtube.com/watch?v=ERRvsPTSn1M
+
+It will also guide you how to run the application.
+
 
 ## Applications
 
