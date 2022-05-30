@@ -48,18 +48,17 @@ The installation process involves 2 separate step:
 
 ### Installation of tlrmvm
 
-...
+see https://github.com/ecrc/tlrmvm
 
 ### Installation of mdctlr
 
-...
+see https://www.youtube.com/watch?v=ERRvsPTSn1M
 
 ## Applications
 
 Available applications:
 
 - generatedataset
-- mdctlr.caldatasize 
 - MDC
 - Marchenko
 
@@ -96,48 +95,11 @@ python $(pwd)/mdctlr/tlrmvm/generatedataset.py \
     --freqlist=0,1,
 ```
 
-See more at `scripts/generateordering`.
-
-
-### mdctlr.caldatasize 
-To obtain statistics about a give TLR-compressed dataset. 
-```
-mdctlr.caldatasize --help
-```
-
-will give you
-
-```
-usage: mdctlr.caldatasize [-h] [--storepath STOREPATH] [--order ORDER] [--bandlength BANDLENGTH] [--outtype OUTTYPE] [--intype INTYPE]
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --storepath STOREPATH
-                        your dataset store path.
-  --order ORDER         geometry order type: hilbert, normal
-  --bandlength BANDLENGTH
-                        band length of inner band
-  --outtype OUTTYPE     precision of inner band
-  --intype INTYPE       precison of inner band
-```
-
-An example run:
-```
-mpirun -np 2 python MDC.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType fp16   --ModeValue 8 --OrderType hilbert --debug
-```
-will give you 
-```
-Your data path:  /datawaha/ecrc/hongy0a/seismic
-ordering method:  normal
-band length:  0
-full outtype  fp32
-size is  32.391774208  GB
-```
 
 ### MDC
 To run a single instance of the MDC operator
 ```
-python apps/MDC.py --help
+python mdctlr/MDC.py --help
 ```
 
 will give you
@@ -169,7 +131,7 @@ optional arguments:
 
 An example run:
 ```
-mpirun -np 2 python MDC.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType fp16   --ModeValue 8 --OrderType hilbert --debug
+mpirun -np 2 python mdctlr/MDC.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType fp16   --ModeValue 8 --OrderType hilbert --debug
 ```
 
 ### Marchenko
@@ -213,10 +175,6 @@ mpirun -np 2 python MarchenkoRedatuming.py --AuxFile 3DMarchenko_auxiliary_2.npz
 
 ## Dataset
 
-The codes are based on MDC dataset. The dataset contains 300 frequency matrices which are located at `${STORE_PATH}/Mck_freqslices`. Each matrix name is `Mck_freqslice{freqid}_sub1.mat`. Frequency id ranges from 0 to 299. The size of frequency matrix is `9801 x 9801`. Below is an example to load origin matrix 
-
-```
-from scipy.io import loadmat
-A = loadmat("Mck_freqslice100_sub1.mat")['Rfreq']
-```
-
+The codes are based on MDC dataset. 
+You can download the dataset in zenodo.
+https://zenodo.org/record/6582600#.Yo-nhJPMKwl
