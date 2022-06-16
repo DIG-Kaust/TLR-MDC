@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# MARCHENKO REDATUMING EXAMPLES
+###############################
+
 # Set-up environment
 . $HOME/spack/share/spack/setup-env.sh
 spack load intel-oneapi-mkl@2022.0.2
@@ -14,7 +18,7 @@ export STORE_PATH=$STORE_PATH
 #export TLRMDCROOT=$HOME/TLR-MDC
 #export PYTHONPATH=$TLRMVMROOT:$TLRMDCROOT
 
-# Run Marchenko redatuming
+# Run experiments
 
 # Dense
 mpirun -np 2 python $TLRMDCROOT/mdctlr/MarchenkoRedatuming.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType Dense --debug
@@ -24,5 +28,5 @@ mpirun -np 2 python $TLRMDCROOT/mdctlr/MarchenkoRedatuming.py --AuxFile 3DMarche
   --ModeValue 8 --OrderType normal --debug
 
 # TLR-FP16-Hilbert
-mpirun -np 2 python ../test/MarchenkoRedatuming.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType fp16 \
+mpirun -np 2 python $TLRMDCROOT/mdctlr/MarchenkoRedatuming.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType fp16 \
   --ModeValue 8 --OrderType hilbert --debug
