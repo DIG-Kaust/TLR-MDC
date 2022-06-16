@@ -39,6 +39,10 @@ STORE_PATH=$YOUR_DATASET_PATH
 ## Installation instructions
 
 First install spack and dependencies in `install` folder.
+```
+./install-gpu.sh
+```
+
 
 Then load dependencies of spack.
 ```
