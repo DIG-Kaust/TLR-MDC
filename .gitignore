@@ -17,3 +17,4 @@ figresults
 *.jpg
 *.npy
 *.pyc
+setup.sh
