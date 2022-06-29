@@ -23,11 +23,11 @@ class TLRMVM_Util:
         self.dtype = denseAarray.dtype
         self.m = denseAarray.shape[0]
         self.n = denseAarray.shape[1]
+
         self.nb = nb 
         self.mtg = self.m // nb if self.m % nb == 0 else self.m // nb + 1
         self.ntg = self.n // nb if self.n % nb == 0 else self.n // nb + 1
-        print("self.mtg self.ntg", self.mtg, self.ntg)
-        self.paddingm = self.mtg * nb 
+        self.paddingm = self.mtg * nb
         self.paddingn = self.ntg * nb 
         self.datafolder = datafolder
         if not exists(self.datafolder):
@@ -44,8 +44,8 @@ class TLRMVM_Util:
         padding_n = self.paddingn
         m = self.m 
         n = self.n 
-        ntiles = self.ntg 
-        mtiles = self.mtg 
+        mtiles = self.mtg
+        ntiles = self.ntg
         svdsavepath = join(self.datafolder, 'SVDinfo')
         if not exists(svdsavepath):
             os.mkdir(svdsavepath)
@@ -57,7 +57,7 @@ class TLRMVM_Util:
         else:
             print("save svd to {}. ".format(svdname))
         bigmap = dict()
-        padA = np.zeros((padding_m,padding_n),dtype=self.dtype)
+        padA = np.zeros((padding_m,padding_n), dtype=self.dtype)
         padA[:m,:n] = A
         for j in tqdm(range(ntiles)):
             for i in range(mtiles):
@@ -92,9 +92,8 @@ class TLRMVM_Util:
         m = self.m 
         n = self.n 
         ntiles = self.ntg 
-        mtiles = self.mtg 
-        uvsavepath = self.datafolder
-        nb = self.nb 
+        mtiles = self.mtg
+        nb = self.nb
         tmpacc = self.error_threshold
         acc = tmpacc if isinstance(tmpacc,float) else float(tmpacc)
         ApproximateA = np.zeros((padding_m, padding_n),dtype=self.dtype)
@@ -105,8 +104,7 @@ class TLRMVM_Util:
         ulist = [[] for _ in range(mtiles)]
         vlist = [[] for _ in range(mtiles)]
         precarray = np.zeros(mtiles * ntiles,dtype=np.float32)
-        u_high = 1e-4
-        u_low = 1e-2
+
         p = mtiles
         for i in tqdm(range(mtiles-1)):
             for j in range(ntiles-1):
@@ -142,8 +140,8 @@ class TLRMVM_Util:
                     ulist[i].append(us)
                     vlist[i].append(vt)
         currank = np.copy(ranklist)
-        currank = currank.reshape((mtiles, ntiles)).T
-        # print(currank)
+        currank = currank.reshape((mtiles, ntiles)) #.T
+
         def getsrk(normA,nb, acc,u,s,v):
             srk = 0
             erk = nb
