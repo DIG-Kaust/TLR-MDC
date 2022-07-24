@@ -5,20 +5,21 @@ from os.path import join, exists
 __all__ = ['DenseGPU']
 
 class DenseGPU:
-    def __init__(self, Ownfreqlist, Totalfreqlist, Splitfreqlist, nfmax, datasetprefix):
+    def __init__(self, Ownfreqlist, Totalfreqlist, Splitfreqlist, nfmax, datasetprefix,
+                 foldername='Mck_freqslices', fileprefix='Mck_freqslice', filesuffix='_sub1', matname='Rfreq'):
         self.nfreq = nfmax
         self.Ownfreqlist = Ownfreqlist
         self.Totalfreqlist = Totalfreqlist
         self.Splitfreqlist = Splitfreqlist
         self.cupyarray = []
         for freq in self.Ownfreqlist:
-            problem = join(datasetprefix, 'Mck_freqslices', 'Mck_freqslice{}_sub1.mat'.format(freq))
+            problem = join(datasetprefix, foldername, '{}{}{}.mat'.format(fileprefix, freq, filesuffix))
 
             if not exists(problem):
-                problem = join(datasetprefix, 'Mck_freqslices', 'Mck_freqslice{}_sub1.npy'.format(freq))
+                problem = join(datasetprefix, foldername, '{}{}{}.npy'.format(fileprefix, freq, filesuffix))
                 A = np.load(problem)
             else:
-                A = loadmat(problem)['Rfreq']
+                A = loadmat(problem)[matname]
 
             self.cupyarray.append(cp.array(A))
         
@@ -38,5 +39,5 @@ class DenseGPU:
                 yfinal[idx] = cp.asnumpy(self.cupyarray[idx].T @ cp.array(xvec))
             else:
                 yfinal[idx] = cp.asnumpy(self.cupyarray[idx] @ cp.array(xvec))
-        return np.hstack(yfinal)
-
+        yfinal = np.hstack(yfinal)
+        return yfinal

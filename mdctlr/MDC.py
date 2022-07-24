@@ -32,7 +32,7 @@ load_dotenv()
 def main(parser):
 
     ######### INPUT PARAMS #########
-    parser.add_argument("--AuxFile", type=str, default="AuxFile.npz", help="File with Auxiliar information for Mck redatuming")
+    parser.add_argument("--AuxFile", type=str, default="AuxFile.npz", help="File with Auxiliary information for Mck redatuming")
     parser.add_argument("--MVMType", type=str, default="Dense", help="Type of MVM: Dense, TLR")
     parser.add_argument("--TLRType", type=str, default="fp32", help="TLR Precision: fp32, fp16, fp16int8, int8")
     parser.add_argument("--bandlen", type=int, default=10, help="TLR Band length")
@@ -69,7 +69,7 @@ def main(parser):
             TARGET_FIG_PATH = join(FIG_PATH, f"MDC_MVMType{args.MVMType}_OrderType{args.OrderType}_Mode{args.ModeValue}")
         else:
             args.MVMType = "TLR" + args.TLRType + "_bandlen{bandlen}"
-            TARGET_FIG_PATH = join(FIG_PATH, f"MDC_MDC_MVMType{args.MVMType}_OrderType{args.OrderType}_Mode{args.ModeValue}")
+            TARGET_FIG_PATH = join(FIG_PATH, f"MDC_MVMType{args.MVMType}_OrderType{args.OrderType}_Mode{args.ModeValue}")
     else:
         TARGET_FIG_PATH = join(FIG_PATH, f"MDC_MVMType{args.MVMType}")
 
@@ -81,7 +81,7 @@ def main(parser):
 
     if mpirank == 0:
         print("-" * 80)
-        print("MARCHENKO REDATUMING APP")
+        print("MDC APP")
         print("-" * 80)
         options = vars(args)
         for key, value in options.items():

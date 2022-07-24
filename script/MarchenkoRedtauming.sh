@@ -13,20 +13,24 @@ conda activate mdctlr
 export FIG_PATH=$HOME/figs
 export STORE_PATH=$STORE_PATH
 
-### change the following env to your setting.
-#export TLRMVMROOT=$HOME/tlrmvm/build/lib.linux-x86_64-3.9/
-#export TLRMDCROOT=$HOME/TLR-MDC
+### Change the following env to your setting.
+#export TLRMVMROOT=path_to_tlrmvm_library
+#export TLRMDCROOT=path_to_tlrmdc_library
 #export PYTHONPATH=$TLRMVMROOT:$TLRMDCROOT
 
 # Run experiments
 
-# Dense
+## Dense
 mpirun -np 2 python $TLRMDCROOT/mdctlr/MarchenkoRedatuming.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType Dense --debug
 
-# TLR-FP16-Normal
+## TLR-FP16-Normal
 mpirun -np 2 python $TLRMDCROOT/mdctlr/MarchenkoRedatuming.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType fp16 \
-  --ModeValue 8 --OrderType normal --debug
+  --ModeValue 8 --OrderType normal --nfmax 100 --debug
 
-# TLR-FP16-Hilbert
+## TLR-FP16-Hilbert
 mpirun -np 2 python $TLRMDCROOT/mdctlr/MarchenkoRedatuming.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType fp16 \
+  --ModeValue 8 --OrderType hilbert --debug
+
+## TLR-INT8-Hilbert
+mpirun -np 2 python $TLRMDCROOT/mdctlr/MarchenkoRedatuming.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType int8 \
   --ModeValue 8 --OrderType hilbert --debug
