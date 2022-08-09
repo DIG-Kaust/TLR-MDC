@@ -106,6 +106,7 @@ class Fredholm1mixed(LinearOperator):
             for i in range(len(x)):
                 self.freqmap[x[i]] = i
         self.debug = False
+
     def _matvec(self, Invector):
         t0 = time.time()
         Invector = cp.asnumpy(Invector)
@@ -127,10 +128,10 @@ class Fredholm1mixed(LinearOperator):
         if scalex:
             y *= invecmax
         sy = np.split(y, len(self.Ownfreqlist))
-        eachyfinal = np.zeros_like(Invector).astype(np.csingle)
+        eachyfinal = np.zeros(self.nfreq * self.n).astype(np.csingle)
         for idx, ownfreq in enumerate(self.Ownfreqlist):
-            eachyfinal[ownfreq * 9801 : (ownfreq+1)*9801] = sy[idx]
-        yfinal = np.zeros_like(Invector).astype(np.csingle)
+            eachyfinal[ownfreq * self.n : (ownfreq+1) * self.n] = sy[idx]
+        yfinal = np.zeros_like(eachyfinal).astype(np.csingle)
         self.comm.Allreduce(eachyfinal, yfinal)
         t1 = time.time()
         yfinal = cp.asarray(yfinal)
@@ -156,10 +157,10 @@ class Fredholm1mixed(LinearOperator):
         if scalex:
             y *= invecmax
         sy = np.split(y, len(self.Ownfreqlist))
-        eachyfinal = np.zeros_like(Invector).astype(np.csingle)
+        eachyfinal = np.zeros(self.nfreq * self.m).astype(np.csingle)
         for idx, ownfreq in enumerate(self.Ownfreqlist):
-            eachyfinal[ownfreq * 9801 : (ownfreq+1)*9801] = sy[idx]
-        yfinal = np.zeros_like(Invector).astype(np.csingle)
+            eachyfinal[ownfreq * self.m : (ownfreq+1) * self.m] = sy[idx]
+        yfinal = np.zeros_like(eachyfinal).astype(np.csingle)
         self.comm.Allreduce(eachyfinal, yfinal)
         t1 = time.time()
         yfinal = cp.asarray(yfinal)

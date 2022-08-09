@@ -11,7 +11,7 @@ decomposition and its bases are stored on disk (TLR compression). Subsequently, 
 directly with the compressed bases using a custom-made TLR-MVM kernel.
 
 This repository provides Python codes to run a variety of seismic algorithms leveraging the C++/CUDA implementation of TLR-MVM 
-situated in [this repository](TLR-MVM REPO).
+situated in [this repository](https://github.com/ecrc/tlrmvm).
 
 ## Project structure
 This repository is organized as follows:
@@ -39,6 +39,10 @@ STORE_PATH=$YOUR_DATASET_PATH
 ## Installation instructions
 
 First install spack and dependencies in `install` folder.
+```
+./install-gpu.sh
+```
+
 
 Then load dependencies of spack.
 ```
@@ -61,23 +65,19 @@ into your PYTHONPATH.
 ```
 (base) hongy0a@vulture:~/tlrmvm/build/lib.linux-x86_64-3.9$ ls
 libtlrmvmcpulib.so  libtlrmvmcudalib.so  pytlrmvm  TLRMVMpy.cpython-39-x86_64-linux-gnu.so
-(base) hongy0a@vulture:~/tlrmvm/build/lib.linux-x86_64-3.9$ export PYTHONPATH=$PYTHONPATH:$(pwd)
-(base) hongy0a@vulture:~/tlrmvm/build/lib.linux-x86_64-3.9$
+(base) hongy0a@vulture:~/tlrmvm/build/lib.linux-x86_64-3.9$ export PYTHONPATH=$PYTHONPATH:$(pwd)S
 ```
 
 Then clone TLR-MDC library and put TLR-MDC root directory 
 into your PYTHONPATH.
-
-
 ```
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 ```
 
-The installation finishes.
+You are ready to go!
 
-We also have an installation video on Youtube.
 
-See https://www.youtube.com/watch?v=ERRvsPTSn1M
+We also have an installation video on [Youtube](https://www.youtube.com/watch?v=ERRvsPTSn1M).
 
 It will also guide you how to run the application.
 
@@ -165,7 +165,7 @@ mpirun -np 2 python mdctlr/MDC.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMTyp
 ### Marchenko
 To run Marchenko redatuming by inversion for a single virtual point
 ```
-python MarchenkoRedatuming.py --help
+python mdctlr/MarchenkoRedatuming.py --help
 ```
 
 will give you

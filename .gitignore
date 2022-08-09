@@ -17,4 +17,5 @@ figresults
 *.jpg
 *.npy
 *.pyc
+setup.sh
 .DS_Store
