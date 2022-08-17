@@ -15,7 +15,7 @@ import numpy as np
 from enum import IntEnum
 from tlrmvm.generatedataset import ApplyReordering
 class DenseMat:
-    def __init__(self,rankmode,order, freqid, datafolder, nb, acc, ntg, mtg,fake_value=None) -> None:
+    def __init__(self,rankmode,order, freqid, datafolder, nb, acc, ntg, mtg, fake_value=None) -> None:
         self.ntg = ntg
         self.mtg = mtg
         self.nb = nb

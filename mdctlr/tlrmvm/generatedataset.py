@@ -3,6 +3,7 @@ import numpy as np
 import sys
 import argparse
 import time
+import zarr
 from os.path import exists,join
 from scipy.io import loadmat
 from dotenv import load_dotenv
@@ -55,6 +56,8 @@ if __name__ == "__main__":
                         help='prefix of filenames')
     parser.add_argument('--suffix', type=str, default='_sub1',
                         help='suffix of filenames')
+    parser.add_argument('--format', type=str, default='mat',
+                        help='format of file (mat or zarr)')
     parser.add_argument('--matname', type=str, default='Rfreq',
                         help='name of variable in matfile')
 
@@ -65,9 +68,17 @@ if __name__ == "__main__":
     ownfreqlist = [f for f in freqlist if f % size == rank]
     print("rank ", rank, " my freqlist ", ownfreqlist)
     def run(freqid):
-        Afilename = join(STORE_PATH, args.foldername, '{}{}{}.mat'.format(args.prefix, freqid, args.suffix))
-        print('Afilename', Afilename)
-        A = loadmat(Afilename)[args.matname]
+        if args.format == 'mat':
+            Afilename = join(STORE_PATH, args.foldername, '{}{}{}.mat'.format(args.prefix, freqid, args.suffix))
+            print('Afilename', Afilename)
+            A = loadmat(Afilename)[args.matname]
+        elif args.format == 'zarr':
+            Afilename = join(STORE_PATH, args.foldername, '{}{}.zarr'.format(args.prefix, args.suffix))
+            print(Afilename)
+            Afile = zarr.open(Afilename, mode='r')
+            A = Afile[freqid]
+        else:
+            raise ValueError('format must be mat or zarr, {} not recognized'.format(args.format))
         A = ApplyReordering(A, args.reordering, args.nrx, args.nry, args.nb)
         datasetname = '%s_Mode%d_Order%s_%s_%d' % (args.prefix, args.rankmodule, args.reordering, args.prefix, freqid)
         print('Datasetname', datasetname)

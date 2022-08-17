@@ -27,6 +27,10 @@ mpirun -np 2 python $TLRMDCROOT/mdctlr/MarchenkoRedatuming.py --AuxFile 3DMarche
 mpirun -np 2 python $TLRMDCROOT/mdctlr/MarchenkoRedatuming.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType fp16 \
   --ModeValue 8 --OrderType normal --nfmax 100 --debug
 
+## TLR-FP32-Hilbert
+mpirun -np 2 python $TLRMDCROOT/mdctlr/MarchenkoRedatuming.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType fp32 \
+  --ModeValue 8 --OrderType hilbert --nfmax 100  --debug
+
 ## TLR-FP16-Hilbert
 mpirun -np 2 python $TLRMDCROOT/mdctlr/MarchenkoRedatuming.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType fp16 \
   --ModeValue 8 --OrderType hilbert --debug

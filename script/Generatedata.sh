@@ -10,10 +10,10 @@ spack load cuda@11.5.1
 spack load openmpi@4.1.3
 spack load cmake@3.21.0
 conda activate mdctlr
-export FIG_PATH=$HOME/figs
-export STORE_PATH=$STORE_PATH
 
 ### Change the following env to your setting.
+#export FIG_PATH=path_to_figure_folder
+#export STORE_PATH=path_to_data_folder
 #export TLRMVMROOT=path_to_tlrmvm_library
 #export TLRMDCROOT=path_to_tlrmdc_library
 #export PYTHONPATH=$TLRMVMROOT:$TLRMDCROOT

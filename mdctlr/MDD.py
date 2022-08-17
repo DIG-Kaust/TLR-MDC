@@ -221,6 +221,12 @@ def main(parser):
         print(f"Total lsqr time : {t1 - t0} s.")
     comm.Barrier()
 
+    # Save results
+    if mpirank == 0:
+        np.savez(join(TARGET_FIG_PATH, f"r_inv{ivsplot}"), radj=radj, rinv=rinv)
+    comm.Barrier()
+
+    # Display results
     if mpirank == 0 and args.debug:
         clip_adj = 1e-1
         fig, ax = plt.subplots(1, 1, sharey=True, figsize=(16, 7))
