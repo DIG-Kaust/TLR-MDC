@@ -22,4 +22,4 @@ export STORE_PATH=/home/ravasim/Documents/Data/Overtrust3D/ #$STORE_PATH
 
 ## TLR-FP16-Normal (works with tlrmvm yuxi/dev)
 mpirun -np 2 python $TLRMDCROOT/mdctlr/MDDOve3D.py --AuxFile 3DMarchenko_auxiliary_2.npz --M 6510 --N 15930 --MVMType TLR --TLRType fp16  \
- --nb 128 --ModeValue 4 --OrderType normal --nfmax 40 --debu
+ --nb 128 --ModeValue 4 --OrderType normal --nfmax 40 --debug
