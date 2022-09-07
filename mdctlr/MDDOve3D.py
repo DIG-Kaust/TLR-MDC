@@ -178,7 +178,7 @@ def main(parser):
     #Gminus_vs = Gminus[:, :, irplot].astype(np.float32)
 
     gminus_filename = f'pup{irplot}.npy'
-    gminus_filepath = '/home/ravasim/Documents/Data/Overtrust3D/Data/' + gminus_filename
+    gminus_filepath = join(STORE_PATH, 'data', gminus_filename)
     Gminus_vs = np.load(gminus_filepath).astype(np.float32)
     print(Gminus_vs.shape, dRop)
     Gminus_vs = cp.asarray(Gminus_vs) # move to gpu
