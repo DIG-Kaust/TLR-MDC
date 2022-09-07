@@ -26,7 +26,7 @@ from pylops.waveeqprocessing.marchenko import directwave
 from pylops.basicoperators import Diagonal
 from pylops.basicoperators import Identity
 from pylops.basicoperators import Roll
-from pytlrmvm import *
+from pytlrmvm import BatchedTlrmvm
 from mdctlr import DenseGPU
 from mdctlr.inversiondist import MDCmixed
 from mdctlr.lsqr import lsqr
@@ -59,6 +59,9 @@ def main(parser):
     mpirank = comm.Get_rank()
     mpisize = comm.Get_size()
     t0all = time.time()
+
+    ######### SETUP GPUs #########
+    # cp.cuda.Device(device=mpirank).use()
 
     ######### PROBLEM PARAMETERS (should be lifted out into a config file #########
     vel = 2400.0             # velocity
@@ -99,6 +102,12 @@ def main(parser):
         print("STORE_PATH", STORE_PATH)
         print("FIG_PATH", TARGET_FIG_PATH)
         print("-" * 80)
+    comm.Barrier()
+
+    print(f"MPIRANK{mpirank}: Gpu{cp.cuda.get_device_id()}")
+    if mpirank == 0:
+        print("-" * 80)
+    comm.Barrier()
 
     ######### DEFINE FREQUENCIES TO ASSIGN TO EACH MPI PROCESS #########
     Totalfreqlist = [x for x in range(nfmax)]
@@ -261,45 +270,11 @@ def main(parser):
             print("Init dense GPU Time is ", t1-t0)
     else:
         # Load TLR kernel
-        configlist = []
-        for i in Ownfreqlist:
-            problem = f'Mode{args.ModeValue}_Order{args.OrderType}_Mck_freqslice_{i}'
-            tlrmvmconfig = TlrmvmConfig(args.M, args.N, args.nb, join(STORE_PATH,'compresseddata'), args.threshold, problem)
-            configlist.append(tlrmvmconfig)
-        if args.TLRType == 'fp32':
-            mvmops = BatchTlrmvmGPU(configvec=configlist, dtype=np.csingle)
-        elif args.TLRType == 'fp16':
-            mvmops = BatchTlrmvmGPUFP16(configvec=configlist, dtype=np.csingle)
-        elif args.TLRType == 'bf16':
-            mvmops = BatchTlrmvmGPUBF16(configvec=configlist, dtype=np.csingle)
-        elif args.TLRType == 'int8':
-            mvmops = BatchTlrmvmGPUINT8(configvec=configlist, dtype=np.csingle)
-        elif args.TLRType == 'fp16int8':
-            inmask = np.zeros((39,39),dtype=np.int32)
-            outmask = np.zeros((39,39),dtype=np.int32)
-            for maski in range(39):
-                for maskj in range(39):
-                    if abs(maski-maskj) < bandlen:
-                        inmask[maski, maskj] = 1
-                    else:
-                        outmask[maski, maskj] = 1
-            for maskx in configlist:
-                maskx.setmaskmat(inmask)
-            configint8 = []
-            for i in Ownfreqlist:
-                problem = f'Mode{args.ModeValue}_Order{args.OrderType}_Mck_freqslice_{i}'
-                tlrmvmconfig = TlrmvmConfig(args.M, args.N, args.nb, join(STORE_PATH,'compresseddata'), args.threshold, problem)
-                configint8.append(tlrmvmconfig)
-            for maskx in configint8:
-                maskx.setmaskmat(outmask)
-            if mpirank == 0:
-                configlist[0].printmaskmat()
-                configint8[0].printmaskmat()
-            mvmops = BatchTlrmvmGPUFP16INT8(configlist, configint8, dtype=np.csingle)
+        problems = [f'Mode{args.ModeValue}_Order{args.OrderType}_Mck_freqslice_{i}' for i in
+                    Ownfreqlist]
+        mvmops = BatchedTlrmvm(join(STORE_PATH, 'compresseddata'), problems, args.threshold, args.M, args.N, args.nb, args.TLRType)
         mvmops.Ownfreqlist = Ownfreqlist
         mvmops.Splitfreqlist = splitfreqlist
-        mvmops.StreamInit(20)
-        mvmops.MemoryInit()
         print("-" * 80)
 
     ######### CREATE MARCHENKO OPERATOR #########
@@ -391,7 +366,9 @@ def main(parser):
         dg_inv_tot_reshuffled = dg_inv_tot
 
     # Save results
-    np.save(join(TARGET_FIG_PATH, "dg_inv_tot"), dg_inv_tot_reshuffled)
+    if mpirank == 0:
+        np.save(join(TARGET_FIG_PATH, "dg_inv_tot"), dg_inv_tot_reshuffled)
+    comm.Barrier()
 
     # Display results
     if mpirank == 0 and args.debug:

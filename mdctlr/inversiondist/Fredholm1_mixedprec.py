@@ -119,10 +119,12 @@ class Fredholm1mixed(LinearOperator):
         if invecmax > 1e-12:
             scalex = True
             Invector /= invecmax
-        self.tlrmat.SetTransposeConjugate(transpose=False, conjugate=self.conj)
+        if self.conj:
+            Invector = np.conj(Invector)  
+        #self.tlrmat.SetTransposeConjugate(transpose=False, conjugate=self.conj)
         spx = np.split(Invector, self.nfreq)
         xlist = np.hstack([spx[i] for i in self.Ownfreqlist])
-        y = self.tlrmat.MVM(xlist)
+        y = self.tlrmat.mvm(False, xlist)
         if self.scaling is not None:
             y *= self.scaling
         if scalex:
@@ -135,6 +137,8 @@ class Fredholm1mixed(LinearOperator):
         self.comm.Allreduce(eachyfinal, yfinal)
         t1 = time.time()
         yfinal = cp.asarray(yfinal)
+        if self.conj:
+            yfinal = cp.conj(yfinal)  
         if self.mpirank == 0:
             print("Fredholm matvec time: {:.6f} s.".format(t1-t0))
         return yfinal
@@ -148,10 +152,12 @@ class Fredholm1mixed(LinearOperator):
         if invecmax > 1e-12:
             scalex = True
             Invector /= invecmax
-        self.tlrmat.SetTransposeConjugate(transpose=True, conjugate=not self.conj)        
+        if not self.conj:
+            Invector = np.conj(Invector)  
+        #self.tlrmat.SetTransposeConjugate(transpose=True, conjugate=not self.conj)        
         spx = np.split(Invector, self.nfreq)
         xlist = np.hstack([spx[i] for i in self.Ownfreqlist])
-        y = self.tlrmat.MVM(xlist)
+        y = self.tlrmat.mvm(True, xlist)
         if self.scaling is not None:
             y *= self.scaling
         if scalex:
@@ -164,6 +170,8 @@ class Fredholm1mixed(LinearOperator):
         self.comm.Allreduce(eachyfinal, yfinal)
         t1 = time.time()
         yfinal = cp.asarray(yfinal)
+        if not self.conj:
+            yfinal = cp.conj(yfinal)  
         if self.mpirank == 0:
             print("Fredholm rmatvec time: {:.6f} s.".format(t1-t0))
         return yfinal
