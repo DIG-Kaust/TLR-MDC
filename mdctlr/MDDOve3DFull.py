@@ -19,6 +19,7 @@ from dotenv import load_dotenv
 from scipy.signal import convolve
 from mpi4py import MPI
 
+from hilbertcurve.hilbertcurve import HilbertCurve
 from pylops.utils.wavelets import *
 from pylops.utils.tapers import *
 from pytlrmvm import BatchedTlrmvm
@@ -32,7 +33,8 @@ load_dotenv()
 def main(parser):
 
     ######### INPUT PARAMS #########
-    parser.add_argument("--AuxFile", type=str, default="AuxFile.npz", help="File with Auxiliar information for Mck redatuming")
+    parser.add_argument("--AuxFile", type=str, default="AuxFile.npz", help="File with Auxiliar information for MDD")
+    parser.add_argument("--DataFolder", type=str, default="compresseddata", help="Folder containing compressed data")
     parser.add_argument("--MVMType", type=str, default="Dense", help="Type of MVM: Dense, TLR")
     parser.add_argument("--TLRType", type=str, default="fp32", help="TLR Precision: fp32, fp16, fp16int8, int8")
     parser.add_argument("--bandlen", type=int, default=10, help="TLR Band length")
@@ -119,13 +121,9 @@ def main(parser):
     print(f"Rank {mpirank}: {Ownfreqlist}")
     print("-" * 80)
 
-    ######### LOAD AUXILIARY INPUTS (GEOMETRY, SUBSURFACE WAVEFIELDS, WAVELET) AND PREPARE FOR MCK #########
-    #inputfile_aux = join(STORE_PATH, args.AuxFile)
-    #inputdata_aux = np.load(inputfile_aux)
-
+    ######### DEFINE GEOMETRY AND OTHER INPUTS #########
     # Sources
-    #s = inputdata_aux['srcs'].T
-    ns = 6510
+    ns = 26040
 
     # Virtual sources grid
     nrx = 177
@@ -139,6 +137,32 @@ def main(parser):
     ot, dt, nt = 0, 0.004, 1126
     t = np.arange(nt) * dt
 
+    ######### DEFINE SORTING (OPTIONAL) #########
+    if args.OrderType == "hilbert":
+        ny, nx, nz = 200, 330, 155
+        y, x, z = np.arange(ny)*15., np.arange(nx)*15., np.arange(nz)*15.
+
+        srcx = np.arange(300,x[-1]-300, 20)
+        srcy = np.arange(300,y[-1]-300, 20)
+        SRCY, SRCX = np.meshgrid(srcy, srcx, indexing='ij')
+        SRCX, SRCY = SRCX.ravel(), SRCY.ravel()
+        # shift to original point and scale down
+        SRCPoints = [(int(x[0]/20.),int(x[1]/20.)) for x in zip(SRCX-300,SRCY-300)]
+        
+        recx = np.arange(700,x[-1]-700, 20)
+        recy = np.arange(600,y[-1]-600, 20)
+        RECY, RECX = np.meshgrid(recy, recx, indexing='ij')
+        RECX, RECY = RECX.ravel(), RECY.ravel()
+        # shift to original point and scale down
+        RECPoints = [(int(x[0]/20.),int(x[1]/20.)) for x in zip(RECX-700,RECY-600)]
+
+        hilbert_curve = HilbertCurve(12, 2)
+        hilbertcodes = hilbert_curve.distances_from_points(SRCPoints)
+        srcidx = np.argsort(hilbertcodes).astype(np.int32)
+        hilbert_curve = HilbertCurve(12, 2)
+        hilbertcodes = hilbert_curve.distances_from_points(RECPoints)
+        recidx = np.argsort(hilbertcodes).astype(np.int32)
+
     ######### CREATE TLR-MVM OPERATOR #########
     if mpirank == 0:
         print('Loading Kernel of MDC Operator...')
@@ -149,8 +173,8 @@ def main(parser):
         pass
     else:
         # Load TLR kernel
-        problems = [f'PDOWN_Mode{args.ModeValue}_Order{args.OrderType}_PDOWN_{i}' for i in Ownfreqlist]
-        mvmops = BatchedTlrmvm(join(STORE_PATH, 'compresseddata'), problems, args.threshold, args.M, args.N, args.nb, 'bf16')
+        problems = [f'Mode{args.ModeValue}_Order{args.OrderType}_{i}' for i in Ownfreqlist]
+        mvmops = BatchedTlrmvm(join(STORE_PATH, args.DataFolder), problems, args.threshold, args.M, args.N, args.nb, 'bf16')
         mvmops.Ownfreqlist = Ownfreqlist
         mvmops.Splitfreqlist = splitfreqlist
 
@@ -177,12 +201,14 @@ def main(parser):
     #print(Gminus.shape, dRop)
     #Gminus_vs = Gminus[:, :, irplot].astype(np.float32)
 
-    gminus_filename = f'pup{irplot}.npy'
+    gminus_filename = f'pup{irplot}_full.npy'
     gminus_filepath = join(STORE_PATH, gminus_filename)
     Gminus_vs = np.load(gminus_filepath).astype(np.float32)
-    print(Gminus_vs.shape, dRop)
-    Gminus_vs = cp.asarray(Gminus_vs) # move to gpu
-
+    if args.OrderType == "hilbert":
+        Gminus_vs_reshuffled = Gminus_vs[:, srcidx]
+    else:
+        Gminus_vs_reshuffled = Gminus_vs
+    Gminus_vs_reshuffled = cp.asarray(Gminus_vs_reshuffled) # move to gpu
     # Adjoint
     if mpirank == 0:
         print('Perform adjoint...')
@@ -190,12 +216,17 @@ def main(parser):
     comm.Barrier()
 
     t0 = time.time()
-    radj = dRop.rmatvec(Gminus_vs.ravel())
+    radj = dRop.rmatvec(Gminus_vs_reshuffled.ravel())
     if mpirank == 0:
         t1 = time.time()
         print(f"MDC : {t1 - t0} s.")
     radj = cp.asnumpy(radj.reshape(nt, nr)) # move to back to cpu and reshape
-
+    if args.OrderType == "hilbert":
+        radj_reshuffled = np.zeros_like(radj)
+        radj_reshuffled[:, recidx] = radj
+    else:
+        radj_reshuffled = radj
+    
     # Inversion
     if mpirank == 0:
         print('Perform inversion...')
@@ -203,12 +234,17 @@ def main(parser):
     comm.Barrier()
     t0 = time.time()
     if mpirank == 0:
-        rinv = lsqr(dRop, Gminus_vs.ravel(), x0=cp.zeros(nt * nr, dtype=np.float32),
+        rinv = lsqr(dRop, Gminus_vs_reshuffled.ravel(), x0=cp.zeros(nt * nr, dtype=np.float32),
                     damp=damp, iter_lim=n_iter, atol=0, btol=0, show=True)[0]
     else:
-        rinv = lsqr(dRop, Gminus_vs.ravel(), x0=cp.zeros(nt * nr, dtype=np.float32),
+        rinv = lsqr(dRop, Gminus_vs_reshuffled.ravel(), x0=cp.zeros(nt * nr, dtype=np.float32),
                     damp=damp, iter_lim=n_iter, atol=0, btol=0, show=False)[0]
     rinv = cp.asnumpy(rinv.reshape(nt, nr))  # move to back to cpu and reshape
+    if args.OrderType == "hilbert":
+        rinv_reshuffled = np.zeros_like(rinv)
+        rinv_reshuffled[:, recidx] = rinv
+    else:
+        rinv_reshuffled = rinv
     t1 = time.time()
     if mpirank == 0:
         print(f"Total lsqr time : {t1 - t0} s.")
@@ -216,14 +252,14 @@ def main(parser):
 
     # Save results
     if mpirank == 0:
-        np.savez(join(TARGET_FIG_PATH, f"r_inv{irplot}"), radj=radj, rinv=rinv)
+        np.savez(join(TARGET_FIG_PATH, f"r_inv{irplot}"), radj=radj_reshuffled, rinv=rinv_reshuffled)
     comm.Barrier()
 
     # Display results
     if mpirank == 0 and args.debug:
         clip_adj = 0.05
         fig, ax = plt.subplots(1, 1, sharey=True, figsize=(16, 7))
-        ax.imshow(radj, vmin=-clip_adj*radj.max(), vmax=clip_adj*radj.max(),
+        ax.imshow(radj_reshuffled, vmin=-clip_adj*radj.max(), vmax=clip_adj*radj.max(),
                   cmap='gray', extent=(0, nr, t[-1], -t[-1]))
         ax.set_title(r'$R_{adj}$'), ax.set_xlabel(r'$x_R$'), ax.set_ylabel(r'$t$')
         ax.axis('tight')
@@ -231,14 +267,14 @@ def main(parser):
 
         clip_inv = 0.05
         fig, ax = plt.subplots(1, 1, sharey=True, figsize=(16, 7))
-        ax.imshow(rinv, vmin=-clip_inv * rinv.max(), vmax=clip_inv * rinv.max(),
+        ax.imshow(rinv_reshuffled, vmin=-clip_inv * rinv.max(), vmax=clip_inv * rinv.max(),
                   cmap='gray', extent=(0, nr, t[-1], -t[-1]))
         ax.set_title(r'$R_{inv}$'), ax.set_xlabel(r'$x_R$'), ax.set_ylabel(r'$t$')
         ax.axis('tight')
         plt.savefig(join(TARGET_FIG_PATH, 'minv.png'), bbox_inches='tight')
 
         fig, (ax0, ax1) = plt.subplots(2, 1, sharex=True, figsize=(15, 10))
-        ax0.imshow(radj.reshape(nt, nry, nrx)[:, [20, 40, 60, 80]].reshape(nt, nrx * 4),
+        ax0.imshow(radj_reshuffled.reshape(nt, nry, nrx)[:, [20, 40, 60, 80]].reshape(nt, nrx * 4),
                    cmap='gray',
                    vmin=-clip_adj * radj.max(), vmax=clip_adj * radj.max(),
                    extent=(0, nrx * nry, t.max(), 0))
@@ -246,7 +282,7 @@ def main(parser):
         ax0.set_ylabel(r'$t(s)$')
         ax0.set_title(r'$\mathbf{R^{Mck}_{adj}}$')
         ax0.set_ylim(2.5, 0.)
-        ax1.imshow(rinv.reshape(nt, nry, nrx)[:, [20, 40, 60, 80]].reshape(nt, nrx * 4),
+        ax1.imshow(rinv_reshuffled.reshape(nt, nry, nrx)[:, [20, 40, 60, 80]].reshape(nt, nrx * 4),
                    cmap='gray',
                    vmin=-clip_inv * rinv.max(), vmax=clip_inv * rinv.max(),
                    extent=(0, nrx * nry, t.max(), 0))
@@ -265,4 +301,3 @@ def main(parser):
 if __name__ == "__main__":
     description = '3D Multi-Dimensional Deconvolution with TLR-MDC and matrix reordering'
     main(argparse.ArgumentParser(description=description))
-
