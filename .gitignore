@@ -19,3 +19,5 @@ figresults
 *.pyc
 setup.sh
 .DS_Store
+script_hpc/*.err
+script_hpc/*.out

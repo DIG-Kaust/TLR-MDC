@@ -1,5 +1,4 @@
 #!/bin/bash
-#SBATCH -n 8
 #SBATCH --partition=batch
 #SBATCH -J inversion
 #SBATCH -o inversion.%J.out
@@ -7,9 +6,9 @@
 #SBATCH --time=00:50:00
 #SBATCH --mem=100G
 #SBATCH --cpus-per-task=12
-#SBATCH --gres=gpu:a100:8
+#SBATCH --gpus=8
+#SBATCH --constraint=[a100]
 #SBATCH --reservation=A100
-
 
 #run the application:
 
@@ -34,4 +33,4 @@ spack load cmake intel-oneapi-mkl cuda openmpi
 # --MVMType TLR --TLRType fp16 --nb 256 --ModeValue 8 --OrderType normal --nfmax 40 --debug
 
 mpirun -np 8 python $TLRMDCROOT/mdctlr/MDDOve3DFull.py --AuxFile 3DMarchenko_auxiliary_2.npz --DataFolder compresseddata_full --M 26040 --N 15930 \
---MVMType TLR --TLRType fp16 --nb 256 --ModeValue 8 --OrderType hilbert --nfmax 240 --debug
+--MVMType TLR --TLRType fp16 --nb 256 --ModeValue 8 --OrderType hilbert --nfmax 250 --debug

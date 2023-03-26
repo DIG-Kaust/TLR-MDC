@@ -10,6 +10,7 @@
 #SBATCH --gres=gpu:v100:8
 
 
+
 #run the application:
 
 export AIHOME=/ibex/ai/home/ravasim
