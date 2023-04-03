@@ -217,9 +217,11 @@ class TLRMVM_Util:
         finalu = np.concatenate(tmpurow, axis=1)
         finalu.T.tofile(ufile)
         tmpvcol = []
-        npvlist = np.array(vlist, dtype=np.object)
-        for i in range(npvlist.shape[1]):
-            tmpvcol.append(np.concatenate(npvlist[:, i], axis=0))
+        for i in range(ntiles):
+            curcol = []
+            for j in range(mtiles):
+                curcol.append(vlist[j][i])
+            tmpvcol.append(np.vstack(curcol))
 
         with open(vfile, 'wb') as f:
             for x in tmpvcol:
