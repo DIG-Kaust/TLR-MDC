@@ -45,7 +45,7 @@ def main(parser):
     parser.add_argument("--N", type=int, default=9801, help="Number of receivers/columns in seismic frequency data")
     parser.add_argument("--nb", type=int, default=256, help="TLR Tile size")
     parser.add_argument("--threshold", type=str, default="0.001", help="TLR Error threshold")
-
+    parser.add_argument("--vs", type=str, default=10000, help="Virtual source")
     parser.add_argument('--debug', default=True, action='store_true', help='Debug')
 
     args = parser.parse_args()
@@ -55,6 +55,15 @@ def main(parser):
     mpirank = comm.Get_rank()
     mpisize = comm.Get_size()
     t0all = time.time()
+
+    ######### SETUP GPUs #########
+    if mpirank == 0:
+        print('Cuda count', cp.cuda.runtime.getDeviceCount())
+        for idev in range(cp.cuda.runtime.getDeviceCount()):
+            print(cp.cuda.runtime.getDeviceProperties(idev)['name'])
+
+    cp.cuda.Device(device=mpirank).use()
+    mempool = cp.get_default_memory_pool()
 
     ######### PROBLEM PARAMETERS (should be lifted out into a config file #########
     nfmax = args.nfmax  # max frequency for MDC (#samples)
@@ -131,7 +140,7 @@ def main(parser):
     nry = 90
     dry = 20
     nr = nrx * nry
-    irplot = 9115
+    ivs = args.vs
 
     # Time axis
     ot, dt, nt = 0, 0.004, 1126
@@ -199,9 +208,9 @@ def main(parser):
     #gminus_filepath = '/home/ravasim/Documents/Data/Overtrust3D/Data/' + gminus_filename
     #Gminus = zarr.open(gminus_filepath, mode='r')
     #print(Gminus.shape, dRop)
-    #Gminus_vs = Gminus[:, :, irplot].astype(np.float32)
+    #Gminus_vs = Gminus[:, :, ivs].astype(np.float32)
 
-    gminus_filename = f'pup{irplot}_full.npy'
+    gminus_filename = f'pup{ivs}_full.npy'
     gminus_filepath = join(STORE_PATH, gminus_filename)
     Gminus_vs = np.load(gminus_filepath).astype(np.float32)
     if args.OrderType == "hilbert":
@@ -252,7 +261,7 @@ def main(parser):
 
     # Save results
     if mpirank == 0:
-        np.savez(join(TARGET_FIG_PATH, f"r_inv{irplot}"), radj=radj_reshuffled, rinv=rinv_reshuffled)
+        np.savez(join(TARGET_FIG_PATH, f"r_inv{ivs}"), radj=radj_reshuffled, rinv=rinv_reshuffled)
     comm.Barrier()
 
     # Display results
@@ -263,7 +272,7 @@ def main(parser):
                   cmap='gray', extent=(0, nr, t[-1], -t[-1]))
         ax.set_title(r'$R_{adj}$'), ax.set_xlabel(r'$x_R$'), ax.set_ylabel(r'$t$')
         ax.axis('tight')
-        plt.savefig(join(TARGET_FIG_PATH, 'madj.png'), bbox_inches='tight')
+        plt.savefig(join(TARGET_FIG_PATH, f'madj{ivs}.png'), bbox_inches='tight')
 
         clip_inv = 0.05
         fig, ax = plt.subplots(1, 1, sharey=True, figsize=(16, 7))
@@ -271,7 +280,7 @@ def main(parser):
                   cmap='gray', extent=(0, nr, t[-1], -t[-1]))
         ax.set_title(r'$R_{inv}$'), ax.set_xlabel(r'$x_R$'), ax.set_ylabel(r'$t$')
         ax.axis('tight')
-        plt.savefig(join(TARGET_FIG_PATH, 'minv.png'), bbox_inches='tight')
+        plt.savefig(join(TARGET_FIG_PATH, f'minv{ivs}.png'), bbox_inches='tight')
 
         fig, (ax0, ax1) = plt.subplots(2, 1, sharex=True, figsize=(15, 10))
         ax0.imshow(radj_reshuffled.reshape(nt, nry, nrx)[:, [20, 40, 60, 80]].reshape(nt, nrx * 4),
@@ -290,12 +299,14 @@ def main(parser):
         ax1.set_ylabel(r'$t(s)$')
         ax1.set_title(r'$\mathbf{R^{Mck}_{inv}}$')
         ax1.set_ylim(2.5, 0.)
-        plt.savefig(join(TARGET_FIG_PATH, 'radj_inv.png'), bbox_inches='tight')
+        plt.savefig(join(TARGET_FIG_PATH, f'radj_inv{ivs}.png'), bbox_inches='tight')
 
     if mpirank == 0:
         t1all = time.time()
         print(f"Done! Total time : {t1all - t0all} s.")
         print("-" * 80)
+    
+    print('Used memory', mempool.used_bytes(), mempool.total_bytes())
 
 
 if __name__ == "__main__":
