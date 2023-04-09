@@ -146,8 +146,8 @@ def lsqr(A, b, damp=0.0, atol=1e-8, btol=1e-8, conlim=1e8,
         t0matvec = time.time()
         u = A.matvec(v) - alfa * u
         t1matvec = time.time()
-        if mpirank == 0:
-            print(f"MDC matvec time : {t1matvec-t0matvec} s.")
+        # if mpirank == 0:
+        #     print(f"MDC matvec time : {t1matvec-t0matvec} s.")
             
         beta = np.linalg.norm(u)
         enterbeta = False
@@ -158,8 +158,8 @@ def lsqr(A, b, damp=0.0, atol=1e-8, btol=1e-8, conlim=1e8,
             t0rmatvec = time.time()
             v = A.rmatvec(u) - beta * v
             t1rmatvec = time.time()
-            if mpirank == 0:
-                print(f"MDC rmatvec time : {t1rmatvec-t0rmatvec} s.")
+            # if mpirank == 0:
+            #     print(f"MDC rmatvec time : {t1rmatvec-t0rmatvec} s.")
             alfa = np.linalg.norm(v)
             if alfa > 0:
                 v = (1 / alfa) * v

@@ -28,3 +28,10 @@ def snr(xtrue : np.ndarray, xapprox : np.ndarray):
     """Signal noise ratio of two vectors
     """
     return - 20 * np.log10(np.linalg.norm(xapprox-xtrue) / np.linalg.norm(xtrue))
+
+def getuvsize(datafolder,ordertype,freqlist,mode,nb,acc):
+    totaluvsize = 0
+    rankarray = [np.fromfile(datafolder + "/Mode8_Order{}_{}_Rmat_nb{}_acc{}.bin".format(ordertype,x,nb,acc),dtype=np.int32)
+            for x in freqlist]
+    totalrank = np.sum(rankarray)
+    return totalrank * 2 * nb * 8 * 1e-9

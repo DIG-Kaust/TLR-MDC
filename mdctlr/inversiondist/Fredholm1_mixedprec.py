@@ -87,6 +87,7 @@ class Fredholm1mixed(LinearOperator):
         self.nb = nb
         self.acc = acc
         self.nfreq = nfreq
+        # here m is N, and n is M !!!!!!!!
         self.n, self.m = n, m
         self.datafolder = datafolder
         self.conj = conj
@@ -100,78 +101,81 @@ class Fredholm1mixed(LinearOperator):
         self.comm = MPI.COMM_WORLD
         self.mpirank = self.comm.Get_rank()
         self.mpisize = self.comm.Get_size()
-        self.freqmap = {}
         self.opcount = 0
-        for x in self.Splitfreqlist:
-            for i in range(len(x)):
-                self.freqmap[x[i]] = i
         self.debug = False
 
     def _matvec(self, Invector):
         t0 = time.time()
-        Invector = cp.asnumpy(Invector)
+        # Invector = cp.asnumpy(Invector)
         self.opcount += 1
-        invecmax = np.max(np.abs(Invector))
-        if self.debug:
-            if self.mpirank == 0:
-                print("matvec transpose and conjugate", False, self.conj, " for ", self.opcount)
-        scalex = False
-        if invecmax > 1e-12:
-            scalex = True
-            Invector /= invecmax
+        # invecmax = np.max(np.abs(Invector))
+        # if self.debug:
+        #     if self.mpirank == 0:
+        #         print("matvec transpose and conjugate", False, self.conj, " for ", self.opcount)
+        # scalex = False
+        # if invecmax > 1e-12:
+        #     scalex = True
+        #     Invector /= invecmax
+        # if self.conj:
+        #     Invector = np.conj(Invector)  
         if self.conj:
-            Invector = np.conj(Invector)  
+            Invector = cp.conj(Invector)
         #self.tlrmat.SetTransposeConjugate(transpose=False, conjugate=self.conj)
-        spx = np.split(Invector, self.nfreq)
-        xlist = np.hstack([spx[i] for i in self.Ownfreqlist])
-        y = self.tlrmat.mvm(False, xlist)
-        if self.scaling is not None:
-            y *= self.scaling
-        if scalex:
-            y *= invecmax
-        sy = np.split(y, len(self.Ownfreqlist))
+        spx = cp.split(Invector, self.nfreq)
+        xlist = cp.concatenate([spx[i] for i in self.Ownfreqlist])
+        # y = self.tlrmat.mvm(False, xlist)
+        ydev = self.tlrmat.tlrmvmgpuinput(xlist,transpose=False)
+        # if self.scaling is not None:
+        #     y *= self.scaling
+        # if scalex:
+        #     y *= invecmax
+        ylist = np.split(ydev.get(), len(self.Ownfreqlist))
         eachyfinal = np.zeros(self.nfreq * self.n).astype(np.csingle)
         for idx, ownfreq in enumerate(self.Ownfreqlist):
-            eachyfinal[ownfreq * self.n : (ownfreq+1) * self.n] = sy[idx]
+            eachyfinal[ownfreq * self.n : (ownfreq+1) * self.n] = ylist[idx]
         yfinal = np.zeros_like(eachyfinal).astype(np.csingle)
         self.comm.Allreduce(eachyfinal, yfinal)
         t1 = time.time()
         yfinal = cp.asarray(yfinal)
         if self.conj:
             yfinal = cp.conj(yfinal)  
-        if self.mpirank == 0:
-            print("Fredholm matvec time: {:.6f} s.".format(t1-t0))
+        # if self.mpirank == 0:
+        #     print("Fredholm matvec time: {:.6f} s.".format(t1-t0))
         return yfinal
 
     def _rmatvec(self, Invector):
         t0 = time.time()
-        Invector = cp.asnumpy(Invector)
+        # Invector = cp.asnumpy(Invector)
         self.opcount += 1
-        invecmax = np.max(np.abs(Invector))
-        scalex = False
-        if invecmax > 1e-12:
-            scalex = True
-            Invector /= invecmax
+        # invecmax = np.max(np.abs(Invector))
+        # scalex = False
+        # if invecmax > 1e-12:
+        #     scalex = True
+        #     Invector /= invecmax
+        # if not self.conj:
+        #     Invector = np.conj(Invector)  
         if not self.conj:
-            Invector = np.conj(Invector)  
-        #self.tlrmat.SetTransposeConjugate(transpose=True, conjugate=not self.conj)        
-        spx = np.split(Invector, self.nfreq)
-        xlist = np.hstack([spx[i] for i in self.Ownfreqlist])
-        y = self.tlrmat.mvm(True, xlist)
-        if self.scaling is not None:
-            y *= self.scaling
-        if scalex:
-            y *= invecmax
-        sy = np.split(y, len(self.Ownfreqlist))
+            Invector = cp.conj(Invector)
+        #self.tlrmat.SetTransposeConjugate(transpose=True, conjugate=not self.conj)
+        spx = cp.split(Invector, self.nfreq)
+        xlist = cp.concatenate([spx[i] for i in self.Ownfreqlist])
+        # y = self.tlrmat.mvm(True, xlist)
+        # if self.scaling is not None:
+        #     y *= self.scaling
+        # if scalex:
+        #     y *= invecmax
+        # sy = np.split(y, len(self.Ownfreqlist))
+        ydev = self.tlrmat.tlrmvmgpuinput(xlist,transpose=True)
+        ylist = np.split(ydev.get(),len(self.Ownfreqlist))
         eachyfinal = np.zeros(self.nfreq * self.m).astype(np.csingle)
         for idx, ownfreq in enumerate(self.Ownfreqlist):
-            eachyfinal[ownfreq * self.m : (ownfreq+1) * self.m] = sy[idx]
+            eachyfinal[ownfreq * self.m : (ownfreq+1) * self.m] = ylist[idx]
         yfinal = np.zeros_like(eachyfinal).astype(np.csingle)
         self.comm.Allreduce(eachyfinal, yfinal)
         t1 = time.time()
         yfinal = cp.asarray(yfinal)
         if not self.conj:
             yfinal = cp.conj(yfinal)  
-        if self.mpirank == 0:
-            print("Fredholm rmatvec time: {:.6f} s.".format(t1-t0))
+        # if self.mpirank == 0:
+        #     print("Fredholm rmatvec time: {:.6f} s.".format(t1-t0))
         return yfinal
