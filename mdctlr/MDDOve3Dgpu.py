@@ -43,7 +43,7 @@ def main(parser):
     parser.add_argument("--N", type=int, default=9801, help="Number of receivers/columns in seismic frequency data")
     parser.add_argument("--nb", type=int, default=256, help="TLR Tile size")
     parser.add_argument("--threshold", type=str, default="0.001", help="TLR Error threshold")
-    parser.add_argument("--vs", type=str, default=10000, help="Virtual source")
+    parser.add_argument("--vs", type=str, default=9115, help="Virtual source")
     parser.add_argument('--debug', default=True, action='store_true', help='Debug')
 
     args = parser.parse_args()
@@ -74,10 +74,10 @@ def main(parser):
     if args.MVMType != "Dense":
         if args.TLRType != 'fp16int8':
             args.MVMType = "TLR" + args.TLRType
-            TARGET_FIG_PATH = join(FIG_PATH, f"MDDOve3D_MVMType{args.MVMType}_OrderType{args.OrderType}_Mode{args.ModeValue}")
+            TARGET_FIG_PATH = join(FIG_PATH, f"MDDOve3D_OrderType{args.OrderType}_nb{args.nb}_acc{args.threshold}")
         else:
             args.MVMType = "TLR" + args.TLRType + "_bandlen{bandlen}"
-            TARGET_FIG_PATH = join(FIG_PATH, f"MDDOve3D_MVMType{args.MVMType}_OrderType{args.OrderType}_Mode{args.ModeValue}")
+            TARGET_FIG_PATH = join(FIG_PATH, f"MDDOve3D_OrderType{args.OrderType}_nb{args.nb}_acc{args.threshold}")
     else:
         TARGET_FIG_PATH = join(FIG_PATH, f"MDDOve3D_MVMType{args.MVMType}")
 
@@ -183,7 +183,7 @@ def main(parser):
         problems = [f'Mode{args.ModeValue}_Order{args.OrderType}_{i}' for i in Ownfreqlist]
         # mvmops = BatchedTlrmvm(join(STORE_PATH, args.DataFolder), problems, args.threshold, args.M, args.N, args.nb, 'bf16')
         mvmops = TilematrixGPU_Ove3D(args.M, args.N, args.nb, 
-            synthetic=False, datafolder=os.environ["STORE_PATH"],acc="0.0001",freqlist=Ownfreqlist)
+            synthetic=False, datafolder=os.environ["STORE_PATH"],acc=args.threshold,freqlist=Ownfreqlist)
         mvmops.estimategpumemory()
         mvmops.loaduvbuffer()
         mvmops.setcolB(1) # just 1 point
@@ -207,7 +207,7 @@ def main(parser):
         print("-" * 80)
     comm.Barrier()
 
-    gminus_filename = f'pup{ivs}_full.npy'
+    gminus_filename = f'pup{ivs}.npy'
     gminus_filepath = join(STORE_PATH, gminus_filename)
     Gminus_vs = np.load(gminus_filepath).astype(np.float32)
     if args.OrderType == "hilbert":
