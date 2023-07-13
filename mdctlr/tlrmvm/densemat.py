@@ -14,8 +14,13 @@ from os.path import join,exists
 import numpy as np
 from enum import IntEnum
 from tlrmvm.generatedataset import ApplyReordering
+
+
 class DenseMat:
-    def __init__(self,rankmode,order, freqid, datafolder, nb, acc, ntg, mtg, fake_value=None) -> None:
+    def __init__(self, rankmode, order, freqid, datafolder, nb, acc, 
+                 ntg, mtg, fake_value=None, order="hilbert", 
+                 suffix=None) -> None:
+        suffix = "" if suffix is None else suffix
         self.ntg = ntg
         self.mtg = mtg
         self.nb = nb
@@ -24,12 +29,12 @@ class DenseMat:
         self.order = order
         self.freqid = freqid
         self.acc = acc
-        filenameprefix = 'Mode{}_Order{}_Mck_freqslice_{}'.format(rankmode, order, freqid)
-        self.rankfile = join(datafolder, 'compresseddata',
+        filenameprefix = 'Mode{}_Order{}_{}{}'.format(rankmode, order, suffix, freqid)
+        self.rankfile = join(datafolder,
             '{}_Rmat_nb{}_acc{}.bin'.format(filenameprefix, nb, acc))
-        self.ubasefile = join(datafolder, 'compresseddata',
+        self.ubasefile = join(datafolder,
             '{}_Ubases_nb{}_acc{}.bin'.format(filenameprefix, nb, acc))
-        self.vbasefile = join(datafolder, 'compresseddata',
+        self.vbasefile = join(datafolder,
             '{}_Vbases_nb{}_acc{}.bin'.format(filenameprefix, nb, acc))
 
     def rank(self):

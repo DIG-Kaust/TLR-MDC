@@ -18,6 +18,7 @@ def randomarray(size,dtype):
 def randomarray2d(d1,d2,dtype):
     return (np.random.rand(d1,d2) + 1j * np.random.rand(d1,d2)).astype(dtype)
 
+
 class Tilematrix_Ove3D:
     def __init__(self, m, n, nb, synthetic=False, acc=None, freqlist=None, 
                  datafolder=None):
@@ -186,7 +187,10 @@ def hilbertIndexing():
 
 class TilematrixGPU_Ove3D:
     def __init__(self, m, n, nb, synthetic=False, acc=None, freqlist=None, 
-                 datafolder=None , ranklist=None, order="hilbert", streamsize=1):
+                 datafolder=None , ranklist=None, order="hilbert", streamsize=1, 
+                 mode=8, prefix=None, suffix=None):
+        prefix = "" if prefix is None else prefix
+        suffix = "" if suffix is None else suffix
         self.m = m
         self.n = n
         self.nb = nb
@@ -198,12 +202,12 @@ class TilematrixGPU_Ove3D:
             self.datafolder = datafolder
             self.order = order
             # load rank matrix
-            self.rankfilelist =["{}/Mode8_Order{}_{}_Rmat_nb{}_acc{}.bin"
-                    .format(datafolder,order,freq,nb,acc) for freq in freqlist]
-            self.ufilelist =["{}/Mode8_Order{}_{}_Ubases_nb{}_acc{}.bin"
-                    .format(datafolder,order,freq,nb,acc) for freq in freqlist]
-            self.vfilelist =["{}/Mode8_Order{}_{}_Vbases_nb{}_acc{}.bin"
-                    .format(datafolder,order,freq,nb,acc) for freq in freqlist]
+            self.rankfilelist =["{}/{}Mode{}_Order{}_{}{}_Rmat_nb{}_acc{}.bin"
+                    .format(datafolder,prefix,mode,order,suffix,freq,nb,acc) for freq in freqlist]
+            self.ufilelist =["{}/{}Mode{}_Order{}_{}{}_Ubases_nb{}_acc{}.bin"
+                    .format(datafolder,prefix,mode,order,suffix,freq,nb,acc) for freq in freqlist]
+            self.vfilelist =["{}/{}Mode{}_Order{}_{}{}_Vbases_nb{}_acc{}.bin"
+                    .format(datafolder,prefix,mode,order,suffix,freq,nb,acc) for freq in freqlist]
             self.rankmatlist = [np.fromfile(rankfile,dtype=np.int32).reshape((self.nt,self.mt)).T
                 for rankfile in self.rankfilelist]
             self.freqlist = freqlist

@@ -2,7 +2,7 @@
 # @copyright (c) 2021- King Abdullah University of Science and
 #                      Technology (KAUST). All rights reserved.
 #
-# Author: Yuxi Hong
+# Authors: Matteo, Ravasi, Yuxi Hong
 # Description: Multidimensional convolution
 ##################################################################
 
@@ -20,23 +20,20 @@ from mpi4py import MPI
 
 from pylops.utils.wavelets import *
 from pylops.utils.tapers import *
-from pytlrmvm import *
-from mdctlr import DenseGPU
 from mdctlr.inversiondist import MDCmixed
 from mdctlr.utils import voronoi_volumes
-
-
-load_dotenv()
+from tlrmvm.tilematrix import TilematrixGPU_Ove3D
 
 
 def main(parser):
 
     ######### INPUT PARAMS #########
-    parser.add_argument("--AuxFile", type=str, default="AuxFile.npz", help="File with Auxiliary information for Mck redatuming")
+    parser.add_argument("--AuxFile", type=str, default="AuxFile.npz", help="File with Auxiliary information for MDC")
     parser.add_argument("--MVMType", type=str, default="Dense", help="Type of MVM: Dense, TLR")
     parser.add_argument("--TLRType", type=str, default="fp32", help="TLR Precision: fp32, fp16, fp16int8, int8")
     parser.add_argument("--bandlen", type=int, default=10, help="TLR Band length")
     parser.add_argument("--nfmax", type=int, default=150, help="TLR Number of frequencies")
+    parser.add_argument("--wavfreq", type=float, default=15, help="Ricker wavelet peak frequency used to convolve the input")
     parser.add_argument("--OrderType", type=str, default="normal", help="Matrix reordering method: normal, l1, hilbert")
     parser.add_argument("--ModeValue", type=int, default=8, help="Rank mode")
     parser.add_argument("--M", type=int, default=9801, help="Number of sources/rows in seismic frequency data")
@@ -55,10 +52,18 @@ def main(parser):
     mpisize = comm.Get_size()
     t0all = time.time()
 
+    ######### SETUP GPUs #########
+    if mpirank == 0:
+        print('Cuda count', cp.cuda.runtime.getDeviceCount())
+        for idev in range(cp.cuda.runtime.getDeviceCount()):
+            print(cp.cuda.runtime.getDeviceProperties(idev)['name'])
+
+    cp.cuda.Device(device=mpirank).use()
+
     ######### PROBLEM PARAMETERS (should be lifted out into a config file #########
     bandlen = args.bandlen   # TLR bandlenght
     nfmax = args.nfmax       # max frequency for MDC (#samples)
-    wavfreq = 15             # Ricker wavelet peak frequency
+    wavfreq = args.wavfreq   # Ricker wavelet peak frequency
 
     ######### DEFINE DATA AND FIGURES DIRECTORIES #########
     STORE_PATH=os.environ["STORE_PATH"]
@@ -132,8 +137,8 @@ def main(parser):
     # Virtual points
     vs = inputdata_aux['vs']
     # Time axis
-    ot, dt, nt = 0, 2.5e-3, 601
-    t = np.arange(nt) * dt
+    t = inputdata_aux['t']
+    ot, dt, nt = t[0], t[1], len(t)
 
     # Find area of each volume - note that areas at the edges and on vertex are unbounded,
     # we will assume that they are and use the minimum are for all points in this example
@@ -163,55 +168,27 @@ def main(parser):
     comm.Barrier()
 
     if args.MVMType == "Dense":
-        # Load dense kernel
-        dev = cp.cuda.Device(mpirank)
-        dev.use()
-        t0 = time.time()
-        mvmops = DenseGPU(Ownfreqlist, Totalfreqlist, splitfreqlist, args.nfmax, STORE_PATH)
-        t1 = time.time()
-        if mpirank == 0:
-            print("Init dense GPU Time is ", t1-t0)
+        # Load dense kernel (need to check it...)
+        pass
+        # dev = cp.cuda.Device(mpirank)
+        # dev.use()
+        # t0 = time.time()
+        # mvmops = DenseGPU(Ownfreqlist, Totalfreqlist, splitfreqlist, args.nfmax, STORE_PATH)
+        # t1 = time.time()
+        # if mpirank == 0:
+        #     print("Init dense GPU Time is ", t1-t0)
     else:
         # Load TLR kernel
-        configlist = []
-        for i in Ownfreqlist:
-            problem = f'Mode{args.ModeValue}_Order{args.OrderType}_Mck_freqslice_{i}'
-            tlrmvmconfig = TlrmvmConfig(args.M, args.N, args.nb, join(STORE_PATH,'compresseddata'), args.threshold, problem)
-            configlist.append(tlrmvmconfig)
-        if args.TLRType == 'fp32':
-            mvmops = BatchTlrmvmGPU(configvec=configlist, dtype=np.csingle)
-        elif args.TLRType == 'fp16':
-            mvmops = BatchTlrmvmGPUFP16(configvec=configlist, dtype=np.csingle)
-        elif args.TLRType == 'bf16':
-            mvmops = BatchTlrmvmGPUBF16(configvec=configlist, dtype=np.csingle)
-        elif args.TLRType == 'int8':
-            mvmops = BatchTlrmvmGPUINT8(configvec=configlist, dtype=np.csingle)
-        elif args.TLRType == 'fp16int8':
-            inmask = np.zeros((39,39),dtype=np.int32)
-            outmask = np.zeros((39,39),dtype=np.int32)
-            for maski in range(39):
-                for maskj in range(39):
-                    if abs(maski-maskj) < bandlen:
-                        inmask[maski, maskj] = 1
-                    else:
-                        outmask[maski, maskj] = 1
-            for maskx in configlist:
-                maskx.setmaskmat(inmask)
-            configint8 = []
-            for i in Ownfreqlist:
-                problem = f'Mode{args.ModeValue}_Order{args.OrderType}_Mck_freqslice_{i}'
-                tlrmvmconfig = TlrmvmConfig(args.M, args.N, args.nb, join(STORE_PATH,'compresseddata'), args.threshold, problem)
-                configint8.append(tlrmvmconfig)
-            for maskx in configint8:
-                maskx.setmaskmat(outmask)
-            if mpirank == 0:
-                configlist[0].printmaskmat()
-                configint8[0].printmaskmat()
-            mvmops = BatchTlrmvmGPUFP16INT8(configlist, configint8, dtype=np.csingle)
+        mvmops = TilematrixGPU_Ove3D(args.M, args.N, args.nb, 
+                                     synthetic=False, datafolder=join(STORE_PATH,'compresseddata'), 
+                                     order=args.OrderType, acc=args.threshold, 
+                                     freqlist=Ownfreqlist, suffix="Mck_freqslice_")
+        mvmops.estimategpumemory()
+        mvmops.loaduvbuffer()
+        mvmops.setcolB(1) # just 1 point
+        
         mvmops.Ownfreqlist = Ownfreqlist
         mvmops.Splitfreqlist = splitfreqlist
-        mvmops.StreamInit(20)
-        mvmops.MemoryInit()
         print("-" * 80)
 
     ######### CREATE MDC OPERATOR #########
@@ -225,11 +202,11 @@ def main(parser):
 
     ######### CREATE DATA FOR MDC #########
     if mpirank == 0:
-        print('Creating Marchenko Operator...')
+        print('Creating Input data...')
         print("-" * 80)
     comm.Barrier()
 
-    # Input focusing function
+    # Input wavefield for MDC (chosen as direct focusing function for Mck)
     dfd_plus = np.concatenate((np.fliplr(G0sub.T).T, np.zeros((nt-1, nr), dtype=np.float32)))
     dfd_plus = cp.asarray(dfd_plus) # move to gpu
 
@@ -273,3 +250,6 @@ if __name__ == "__main__":
     description = '3D Multi-Dimensional Convolution with TLR-MDC and matrix reordering'
     main(argparse.ArgumentParser(description=description))
 
+
+# TO DO:
+# - Dense

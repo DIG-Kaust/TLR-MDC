@@ -2,7 +2,7 @@
 # @copyright (c) 2021- King Abdullah University of Science and
 #                      Technology (KAUST). All rights reserved.
 #
-# Author: Yuxi Hong
+# Author: Matteo, Ravasi, Yuxi Hong
 # Description: Marchenko redatuming with TLR-MDC and
 # geometric-reordering
 ##################################################################
@@ -26,14 +26,10 @@ from pylops.waveeqprocessing.marchenko import directwave
 from pylops.basicoperators import Diagonal
 from pylops.basicoperators import Identity
 from pylops.basicoperators import Roll
-from pytlrmvm import BatchedTlrmvm
-from mdctlr import DenseGPU
 from mdctlr.inversiondist import MDCmixed
 from mdctlr.lsqr import lsqr
 from mdctlr.utils import voronoi_volumes
-
-
-load_dotenv()
+from tlrmvm.tilematrix import TilematrixGPU_Ove3D
 
 
 def main(parser):
@@ -61,7 +57,12 @@ def main(parser):
     t0all = time.time()
 
     ######### SETUP GPUs #########
-    # cp.cuda.Device(device=mpirank).use()
+    if mpirank == 0:
+        print('Cuda count', cp.cuda.runtime.getDeviceCount())
+        for idev in range(cp.cuda.runtime.getDeviceCount()):
+            print(cp.cuda.runtime.getDeviceProperties(idev)['name'])
+
+    cp.cuda.Device(device=mpirank).use()
 
     ######### PROBLEM PARAMETERS (should be lifted out into a config file #########
     vel = 2400.0             # velocity
@@ -150,8 +151,8 @@ def main(parser):
     # Virtual points
     vs = inputdata_aux['vs']
     # Time axis
-    ot, dt, nt = 0, 2.5e-3, 601
-    t = np.arange(nt) * dt
+    t = inputdata_aux['t']
+    ot, dt, nt = t[0], t[1], len(t)
 
     # Find area of each volume - note that areas at the edges and on vertex are unbounded,
     # we will assume that they are and use the minimum are for all points in this example
@@ -260,19 +261,25 @@ def main(parser):
     comm.Barrier()
 
     if args.MVMType == "Dense":
-        # Load dense kernel
-        dev = cp.cuda.Device(mpirank)
-        dev.use()
-        t0 = time.time()
-        mvmops = DenseGPU(Ownfreqlist, Totalfreqlist, splitfreqlist, args.nfmax, STORE_PATH)
-        t1 = time.time()
-        if mpirank == 0:
-            print("Init dense GPU Time is ", t1-t0)
+        # Load dense kernel (need to check it...)
+        pass
+        # dev = cp.cuda.Device(mpirank)
+        # dev.use()
+        # t0 = time.time()
+        # mvmops = DenseGPU(Ownfreqlist, Totalfreqlist, splitfreqlist, args.nfmax, STORE_PATH)
+        # t1 = time.time()
+        # if mpirank == 0:
+        #     print("Init dense GPU Time is ", t1-t0)
     else:
         # Load TLR kernel
-        problems = [f'Mode{args.ModeValue}_Order{args.OrderType}_Mck_freqslice_{i}' for i in
-                    Ownfreqlist]
-        mvmops = BatchedTlrmvm(join(STORE_PATH, 'compresseddata'), problems, args.threshold, args.M, args.N, args.nb, args.TLRType)
+        mvmops = TilematrixGPU_Ove3D(args.M, args.N, args.nb, 
+                                     synthetic=False, datafolder=join(STORE_PATH,'compresseddata'), 
+                                     order=args.OrderType, acc=args.threshold, freqlist=Ownfreqlist, 
+                                     suffix="Mck_freqslice_")
+        mvmops.estimategpumemory()
+        mvmops.loaduvbuffer()
+        mvmops.setcolB(1) # just 1 point
+        
         mvmops.Ownfreqlist = Ownfreqlist
         mvmops.Splitfreqlist = splitfreqlist
         print("-" * 80)
@@ -299,7 +306,7 @@ def main(parser):
 
     ######### CREATE DATA FOR MARCHENKO REDATUMING #########
     if mpirank == 0:
-        print('Creating Marchenko Operator...')
+        print('Creating Input data...')
         print("-" * 80)
     comm.Barrier()
 
@@ -327,7 +334,6 @@ def main(parser):
     # Invert
     t0 = time.time()
     if mpirank == 0:
-        print(dMop.shape, 2*(2*nt-1)*nr)
         df1_inv = lsqr(dMop, dd.ravel(), x0=cp.zeros(2*(2*nt-1)*nr, dtype=np.float32),
                        iter_lim=n_iter, atol=0, btol=0, show=True)[0]
     else:

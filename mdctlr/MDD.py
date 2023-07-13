@@ -2,7 +2,7 @@
 # @copyright (c) 2021- King Abdullah University of Science and
 #                      Technology (KAUST). All rights reserved.
 #
-# Author: Matteo Ravasi
+# Authors: Matteo, Ravasi, Yuxi Hong
 # Description: Multidimensional deconvolution
 ##################################################################
 
@@ -10,8 +10,8 @@ import os
 import time
 import argparse
 import cupy as cp
-import zarr
 import matplotlib.pyplot as plt
+import zarr
 
 from os.path import join, exists
 from time import sleep
@@ -21,12 +21,9 @@ from mpi4py import MPI
 
 from pylops.utils.wavelets import *
 from pylops.utils.tapers import *
-from pytlrmvm import BatchedTlrmvm
-from mdctlr import DenseGPU
 from mdctlr.inversiondist import MDCmixed
 from mdctlr.lsqr import lsqr
-
-load_dotenv()
+from tlrmvm.tilematrix import TilematrixGPU_Ove3D
 
 
 def main(parser):
@@ -145,11 +142,12 @@ def main(parser):
     ovsy = 200
     nvs = nvsx * nvsy
     ivsx, ivsy = 21, 19
-    ivsplot = ivsx * nvsy + ivsy
+    ivsinv = ivsx * nvsy + ivsy
 
     # Time axis
-    ot, dt, nt = 0, 2.5e-3, 601
-    t = np.arange(nt) * dt
+    t = inputdata_aux['t']
+    ot, dt, nt = t[0], t[1], len(t)
+
 
     ######### CREATE TLR-MVM OPERATOR #########
     if mpirank == 0:
@@ -159,20 +157,28 @@ def main(parser):
 
     if args.MVMType == "Dense":
         # Load dense kernel
-        dev = cp.cuda.Device(mpirank)
-        dev.use()
-        t0 = time.time()
-        mvmops = DenseGPU(Ownfreqlist, Totalfreqlist, splitfreqlist, args.nfmax, STORE_PATH,
-                          'Gplus_freqslices', 'Gplus_freqslice', matname='Gplusfreq')
-        t1 = time.time()
-        if mpirank == 0:
-            print("Init dense GPU Time is ", t1-t0)
+        pass
+        # dev = cp.cuda.Device(mpirank)
+        # dev.use()
+        # t0 = time.time()
+        # mvmops = DenseGPU(Ownfreqlist, Totalfreqlist, splitfreqlist, args.nfmax, STORE_PATH,
+        #                  'Gplus_freqslices', 'Gplus_freqslice', matname='Gplusfreq')
+        # t1 = time.time()
+        # if mpirank == 0:
+        #     print("Init dense GPU Time is ", t1-t0)
     else:
         # Load TLR kernel
-        problems = [f'Gplus_freqslice_Mode{args.ModeValue}_Order{args.OrderType}_Gplus_freqslice_{i}' for i in Ownfreqlist]
-        mvmops = BatchedTlrmvm(join(STORE_PATH, 'compresseddata'), problems, args.threshold, args.M, args.N, args.nb, 'bf16')
+        mvmops = TilematrixGPU_Ove3D(args.M, args.N, args.nb, 
+                                     synthetic=False, datafolder=join(STORE_PATH,'compresseddata'), 
+                                     acc=args.threshold, freqlist=Ownfreqlist, order=args.OrderType,
+                                     mode=4, prefix="Gplus_freqslice_", suffix="Gplus_freqslice_")
+        mvmops.estimategpumemory()
+        mvmops.loaduvbuffer()
+        mvmops.setcolB(1) # just 1 point
+        
         mvmops.Ownfreqlist = Ownfreqlist
         mvmops.Splitfreqlist = splitfreqlist
+        print("-" * 80)
 
     ######### CREATE MDC OPERATOR #########
     if mpirank == 0:
@@ -186,16 +192,16 @@ def main(parser):
 
     ######### CREATE DATA FOR MDD #########
     if mpirank == 0:
-        print('Loading data...')
+        print('Loading Data...')
         print("-" * 80)
     comm.Barrier()
 
-    # Input upgoing wavefield
+    # Input upgoing wavefield (single virtual source)
     gminus_filename = 'Gminus_sub1.zarr'
-    gminus_filepath = '/home/ravasim/Documents/Data/Marchenko3D/' + gminus_filename
+    gminus_filepath = join(STORE_PATH, gminus_filename) 
 
     Gminus = zarr.open(gminus_filepath, mode='r')
-    Gminus_vs = Gminus[:, :, ivsplot].astype(np.float32)
+    Gminus_vs = Gminus[:, :, ivsinv].astype(np.float32)
     Gminus_vs = np.concatenate((np.zeros((nt - 1, ns), dtype=np.float32), Gminus_vs), axis=0)
     Gminus_vs = cp.asarray(Gminus_vs) # move to gpu
 
@@ -223,7 +229,7 @@ def main(parser):
 
     # Save results
     if mpirank == 0:
-        np.savez(join(TARGET_FIG_PATH, f"r_inv{ivsplot}"), radj=radj, rinv=rinv)
+        np.savez(join(TARGET_FIG_PATH, f"r_inv{ivsinv}"), radj=radj, rinv=rinv)
     comm.Barrier()
 
     # Display results

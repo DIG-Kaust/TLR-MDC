@@ -1,40 +1,37 @@
-##################################################################
+###################################################################
 # @copyright (c) 2021- King Abdullah University of Science and
 #                      Technology (KAUST). All rights reserved.
 #
-# Author: Matteo Ravasi
-# Description: Multidimensional deconvolution
-##################################################################
+# Authors: Matteo Ravasi, Yuxi Hong
+# Description: Multidimensional deconvolution of 3D Overthrust data
+###################################################################
 
 import os
 import time
 import argparse
+import numpy as np
 import cupy as cp
-#import zarr
 import matplotlib.pyplot as plt
+#import zarr
 
 from os.path import join, exists
 from time import sleep
-from dotenv import load_dotenv
 from scipy.signal import convolve
 from mpi4py import MPI
 
 from hilbertcurve.hilbertcurve import HilbertCurve
 from pylops.utils.wavelets import *
 from pylops.utils.tapers import *
-from pytlrmvm import BatchedTlrmvm
-from mdctlr import DenseGPU
 from mdctlr.inversiondist import MDCmixed
 from mdctlr.lsqr import lsqr
-
-load_dotenv()
+from tlrmvm.tilematrix import TilematrixGPU_Ove3D
 
 
 def main(parser):
 
     ######### INPUT PARAMS #########
-    parser.add_argument("--AuxFile", type=str, default="AuxFile.npz", help="File with Auxiliar information for MDD")
-    parser.add_argument("--DataFolder", type=str, default="compresseddata", help="Folder containing compressed data")
+    parser.add_argument("--DataFolder", type=str, default="compresseddata_full", help="Folder containing compressed data")
+    parser.add_argument("--PupFolder", type=str, default="pupdata", help="Folder containing pup data")
     parser.add_argument("--MVMType", type=str, default="Dense", help="Type of MVM: Dense, TLR")
     parser.add_argument("--TLRType", type=str, default="fp32", help="TLR Precision: fp32, fp16, fp16int8, int8")
     parser.add_argument("--bandlen", type=int, default=10, help="TLR Band length")
@@ -45,7 +42,7 @@ def main(parser):
     parser.add_argument("--N", type=int, default=9801, help="Number of receivers/columns in seismic frequency data")
     parser.add_argument("--nb", type=int, default=256, help="TLR Tile size")
     parser.add_argument("--threshold", type=str, default="0.001", help="TLR Error threshold")
-    parser.add_argument("--vs", type=str, default=10000, help="Virtual source")
+    parser.add_argument("--vs", type=str, default=9115, help="Virtual source")
     parser.add_argument('--debug', default=True, action='store_true', help='Debug')
 
     args = parser.parse_args()
@@ -76,10 +73,10 @@ def main(parser):
     if args.MVMType != "Dense":
         if args.TLRType != 'fp16int8':
             args.MVMType = "TLR" + args.TLRType
-            TARGET_FIG_PATH = join(FIG_PATH, f"MDDOve3D_MVMType{args.MVMType}_OrderType{args.OrderType}_Mode{args.ModeValue}")
+            TARGET_FIG_PATH = join(FIG_PATH, f"MDDOve3D_OrderType{args.OrderType}_nb{args.nb}_acc{args.threshold}")
         else:
             args.MVMType = "TLR" + args.TLRType + "_bandlen{bandlen}"
-            TARGET_FIG_PATH = join(FIG_PATH, f"MDDOve3D_MVMType{args.MVMType}_OrderType{args.OrderType}_Mode{args.ModeValue}")
+            TARGET_FIG_PATH = join(FIG_PATH, f"MDDOve3D_OrderType{args.OrderType}_nb{args.nb}_acc{args.threshold}")
     else:
         TARGET_FIG_PATH = join(FIG_PATH, f"MDDOve3D_MVMType{args.MVMType}")
 
@@ -171,7 +168,7 @@ def main(parser):
         hilbert_curve = HilbertCurve(12, 2)
         hilbertcodes = hilbert_curve.distances_from_points(RECPoints)
         recidx = np.argsort(hilbertcodes).astype(np.int32)
-
+        
     ######### CREATE TLR-MVM OPERATOR #########
     if mpirank == 0:
         print('Loading Kernel of MDC Operator...')
@@ -183,7 +180,12 @@ def main(parser):
     else:
         # Load TLR kernel
         problems = [f'Mode{args.ModeValue}_Order{args.OrderType}_{i}' for i in Ownfreqlist]
-        mvmops = BatchedTlrmvm(join(STORE_PATH, args.DataFolder), problems, args.threshold, args.M, args.N, args.nb, 'bf16')
+        mvmops = TilematrixGPU_Ove3D(args.M, args.N, args.nb, 
+            synthetic=False, datafolder=join(STORE_PATH, args.DataFolder), acc=args.threshold,freqlist=Ownfreqlist)
+        mvmops.estimategpumemory()
+        mvmops.loaduvbuffer()
+        mvmops.setcolB(1) # just 1 point
+        
         mvmops.Ownfreqlist = Ownfreqlist
         mvmops.Splitfreqlist = splitfreqlist
 
@@ -194,7 +196,6 @@ def main(parser):
     comm.Barrier()
 
     dRop = MDCmixed(mvmops, ns, nr, nt=nt, nfreq=nfmax, nv=1, dt=dt, dr=drx * dry, twosided=False,
-                    nb=args.nb, acc=args.threshold, prescaled=True, datafolder=join(STORE_PATH, 'compresseddata'),
                     transpose=False, conj=False)
 
     ######### CREATE DATA FOR MDD #########
@@ -203,21 +204,16 @@ def main(parser):
         print("-" * 80)
     comm.Barrier()
 
-    # Input upgoing wavefield
-    #gminus_filename = 'pup.zarr'
-    #gminus_filepath = '/home/ravasim/Documents/Data/Overtrust3D/Data/' + gminus_filename
-    #Gminus = zarr.open(gminus_filepath, mode='r')
-    #print(Gminus.shape, dRop)
-    #Gminus_vs = Gminus[:, :, ivs].astype(np.float32)
-
-    gminus_filename = f'pup{ivs}_full.npy'
-    gminus_filepath = join(STORE_PATH, gminus_filename)
+    gminus_filename = f'pup{ivs}.npy'
+    gminus_filepath = join(STORE_PATH, args.PupFolder, gminus_filename)
     Gminus_vs = np.load(gminus_filepath).astype(np.float32)
     if args.OrderType == "hilbert":
+        print('Gminus_vs', Gminus_vs.shape, srcidx.max())
         Gminus_vs_reshuffled = Gminus_vs[:, srcidx]
     else:
         Gminus_vs_reshuffled = Gminus_vs
     Gminus_vs_reshuffled = cp.asarray(Gminus_vs_reshuffled) # move to gpu
+    
     # Adjoint
     if mpirank == 0:
         print('Perform adjoint...')
