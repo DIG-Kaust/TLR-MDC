@@ -10,7 +10,7 @@
 #SBATCH --gpus=v100:4
 
 
-## MDD of Overthrust 3D model, to be run as: sbatch submit_Ove3DMDDFull_IbexV100.sh nb threshold
+## MDD of Overthrust 3D model, to be run as: sbatch submit_Ove3DMDDFull_IbexV100.sh
 
 # load environment
 module load intel/2020 gcc/10.2.0 openmpi/4.0.3-cuda11.2.2 cmake/3.24.2/gnu-8.2.0 cuda/11.2.2
@@ -24,6 +24,6 @@ export STORE_PATH=/ibex/ai/home/ravasim/MDC-TLRMVM/
 export FIG_PATH=/home/ravasim/2022/Projects/MDC_TLRMVM_v2/Figs
 
 #run the application:
-mpirun -np 4 python $TLRMDCROOT/mdctlr/MDDOve3DFull.py \
+mpirun -np 4 python $TLRMDCROOT/app/MDDOve3DFull.py \
 --DataFolder compresseddata_full --M 26040 --N 15930 --MVMType TLR --TLRType fp32 \
---nb $1 --threshold $2 --ModeValue 8 --OrderType hilbert --nfmax 200 --vs 9115 --debug
+--nb 256 --threshold 0.001 --ModeValue 8 --OrderType hilbert --nfmax 200 --vs 9115 --debug

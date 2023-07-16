@@ -24,7 +24,7 @@ from pylops.utils.wavelets import *
 from pylops.utils.tapers import *
 from mdctlr.inversiondist import MDCmixed
 from mdctlr.lsqr import lsqr
-from tlrmvm.tilematrix import TilematrixGPU_Ove3D
+from mdctlr.tlrmvm.tilematrix import TilematrixGPU_Ove3D
 
 
 def main(parser):
@@ -196,7 +196,7 @@ def main(parser):
     comm.Barrier()
 
     dRop = MDCmixed(mvmops, ns, nr, nt=nt, nfreq=nfmax, nv=1, dt=dt, dr=drx * dry, twosided=False,
-                    transpose=False, conj=False)
+                    conj=False)
 
     ######### CREATE DATA FOR MDD #########
     if mpirank == 0:

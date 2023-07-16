@@ -24,8 +24,14 @@ export STORE_PATH=/ibex/ai/home/ravasim/ravasim_OLDscratch/MDC-TLRMVM/
 export FIG_PATH=/home/ravasim/2022/Projects/MDC_TLRMVM_v2/Figs
 
 # run the application (Dense):
-# mpirun -np 4 python $TLRMDCROOT/mdctlr/MDC.py --AuxFile 3DMarchenko_aux.npz --MVMType Dense --nfmax 5 --repeat 10 --debug
+# mpirun -np 4 python $TLRMDCROOT/app/MDC.py --AuxFile 3DMarchenko_aux.npz --MVMType Dense --nfmax 5 --repeat 10 --debug
 
+# run the application (TLR-FP16-Normal):
+mpirun -np 4 python $TLRMDCROOT/app/MDC.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType fp16 \
+  --ModeValue 8 --OrderType normal --repeat 10 --debug
+  
 # run the application (TLR-FP16-Hilbert):
-mpirun -np 4 python $TLRMDCROOT/mdctlr/MDC.py --AuxFile 3DMarchenko_aux.npz --MVMType TLR --TLRType fp16 \
-  --ModeValue 8 --OrderType hilbert --nfmax 100 --repeat 10 --debug
+#mpirun -np 4 python $TLRMDCROOT/app/MDC.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType fp16 \
+#  --ModeValue 8 --OrderType hilbert --repeat 10 --debug
+#mpirun -np 4 python $TLRMDCROOT/app/MDC.py --AuxFile 3DMarchenko_aux.npz --MVMType TLR --TLRType fp16 \
+#  --ModeValue 8 --OrderType hilbert --nfmax 100 --repeat 10 --debug

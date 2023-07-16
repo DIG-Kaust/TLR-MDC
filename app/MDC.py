@@ -22,7 +22,7 @@ from pylops.utils.wavelets import *
 from pylops.utils.tapers import *
 from mdctlr.inversiondist import MDCmixed
 from mdctlr.utils import voronoi_volumes
-from tlrmvm.tilematrix import TilematrixGPU_Ove3D
+from mdctlr.tlrmvm.tilematrix import TilematrixGPU_Ove3D
 
 
 def main(parser):
@@ -137,8 +137,11 @@ def main(parser):
     # Virtual points
     vs = inputdata_aux['vs']
     # Time axis
-    t = inputdata_aux['t']
-    ot, dt, nt = t[0], t[1], len(t)
+    #t = inputdata_aux['t']
+    #ot, dt, nt = t[0], t[1], len(t)
+    # Time axis
+    ot, dt, nt = 0, 2.5e-3, 601
+    t = np.arange(nt) * dt
 
     # Find area of each volume - note that areas at the edges and on vertex are unbounded,
     # we will assume that they are and use the minimum are for all points in this example
@@ -198,7 +201,7 @@ def main(parser):
     comm.Barrier()
 
     dRop = MDCmixed(mvmops, ns, nr, nt=2*nt-1, nfreq=nfmax, nv=1, dt=dt, dr=2*darea, nb=args.nb,  acc=args.threshold,
-                    prescaled=True, datafolder=join(STORE_PATH, 'compresseddata'), transpose=False, conj=False)
+                    prescaled=True, datafolder=join(STORE_PATH, 'compresseddata'), conj=False)
 
     ######### CREATE DATA FOR MDC #########
     if mpirank == 0:
@@ -208,8 +211,12 @@ def main(parser):
 
     # Input wavefield for MDC (chosen as direct focusing function for Mck)
     dfd_plus = np.concatenate((np.fliplr(G0sub.T).T, np.zeros((nt-1, nr), dtype=np.float32)))
+    dfd_plus /= dfd_plus.max()
     dfd_plus = cp.asarray(dfd_plus) # move to gpu
-
+    if mpirank == 0:
+        print('dfd_plus', dfd_plus.min(), dfd_plus.max())
+        print(dfd_plus.shape, dfd_plus.size, dRop)
+    
     # Compute forward
     ctimes = []
     for _ in range(args.repeat):
@@ -220,7 +227,9 @@ def main(parser):
             ctimes.append(t1 - t0)
             print(f"MDC : {t1 - t0} s.")
     dforward = cp.asnumpy(dforward.reshape(2 * nt - 1, nr)) # move to back to cpu and reshape
-
+    if mpirank == 0:
+        print('dforward', dforward.min(), dforward.max())
+    
     # Report statistics
     if mpirank == 0:
         ctimes = np.array(ctimes)
@@ -253,3 +262,4 @@ if __name__ == "__main__":
 
 # TO DO:
 # - Dense
+# - TLR gives NaN!
