@@ -90,6 +90,8 @@ Available applications:
 - generatedataset
 - MDC
 - Marchenko
+- MDDOve3DFull
+
 
 ### generatedataset
 To create a TLR compressed version of the original dataset:
@@ -192,7 +194,7 @@ optional arguments:
   --M M                 Number of sources/rows in seismic frequency data
   --N N                 Number of receivers/columns in seismic frequency data
   --nb NB               TLR Tile size
-  --threshold THRESHOLD
+  --threshold           TLR Threshold
                         TLR Error threshold
   --debug               Debug
 ```
@@ -202,8 +204,21 @@ An example run:
 mpirun -np 2 python MarchenkoRedatuming.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType fp16   --ModeValue 8 --OrderType hilbert --debug
 ```
 
-## Dataset
+## Datasets
 
-The codes are based on MDC dataset. 
-You can download the dataset in zenodo.
-https://zenodo.org/record/6582600#.Yo-nhJPMKwl
+The codes are based on two different datasets:
+
+- The first one, used to run the MDC, MarchenkoRedatuming, and MDD apps can be downloaded at https://zenodo.org/record/6582600#.Yo-nhJPMKwl. More details about this dataset
+can be found in the following publication:
+
+```
+@article{ravasi2022,
+	title={An open-source framework for the implementation of large-scale integral operators with flexible, modern high-performance computing solutions: 
+  Enabling 3D Marchenko imaging by least-squares inversion},
+	authors={M. Ravasi, I. Vasconcelos},
+	journal={Geophysics},
+	year={2021}
+}
+```
+
+- The second one, used to run the MDDOve3DFull app is currently not available due to data size, contact us if interested in the dataset.
