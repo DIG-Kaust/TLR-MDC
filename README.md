@@ -16,9 +16,10 @@ situated in [this repository](https://github.com/ecrc/tlrmvm).
 ## Project structure
 This repository is organized as follows:
 
-- **mdctlr**: python library containing routines for tlr-based multidimensional convolution and its use in seismic inverse problem
-- **scripts**: set of shell scripts used to run the various applications on standard workstations and KAUST supercomputer
-- **install**: set of shell scripts used in the installation process
+- **mdctlr**: python library containing routines for tlr-based multidimensional convolution and its use in seismic inverse problem;
+- **app**: set of python scripts running the different applications provided by the mdctlr library;
+- **script**: set of shell scripts used to run the various applications on standard workstations;
+- **script_hpc**: set of shell scripts used to run the various applications on KAUST supercomputer;
 
 ## Environments variable
 
