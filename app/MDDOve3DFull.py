@@ -25,24 +25,32 @@ from pylops.utils.tapers import *
 from mdctlr.inversiondist import MDCmixed
 from mdctlr.lsqr import lsqr
 from mdctlr.tlrmvm.tilematrix import TilematrixGPU_Ove3D
+from mdctlr.tlrmvm.reorderingindex import gethilbertindex
 
 
 def main(parser):
 
     ######### INPUT PARAMS #########
+    parser.add_argument("--AuxFile", type=str, default="AuxFile.npz", help="File with Auxiliary information for MDD")
     parser.add_argument("--DataFolder", type=str, default="compresseddata_full", help="Folder containing compressed data")
     parser.add_argument("--PupFolder", type=str, default="pupdata", help="Folder containing pup data")
+    parser.add_argument("--FigFolder", type=str, default="MDDOve3D", help="Prefix of folder containing figures")
     parser.add_argument("--MVMType", type=str, default="Dense", help="Type of MVM: Dense, TLR")
     parser.add_argument("--TLRType", type=str, default="fp32", help="TLR Precision: fp32, fp16, fp16int8, int8")
     parser.add_argument("--bandlen", type=int, default=10, help="TLR Band length")
     parser.add_argument("--nfmax", type=int, default=150, help="TLR Number of frequencies")
     parser.add_argument("--OrderType", type=str, default="normal", help="Matrix reordering method: normal, l1, hilbert")
+    parser.add_argument("--PHilbertSrc", type=int, default=12, help="Hilbert size of source axis (2^p)")
+    parser.add_argument("--PHilbertRec", type=int, default=12, help="Hilbert size of receiver axis (2^p)")
     parser.add_argument("--ModeValue", type=int, default=8, help="Rank mode")
     parser.add_argument("--M", type=int, default=9801, help="Number of sources/rows in seismic frequency data")
     parser.add_argument("--N", type=int, default=9801, help="Number of receivers/columns in seismic frequency data")
     parser.add_argument("--nb", type=int, default=256, help="TLR Tile size")
     parser.add_argument("--threshold", type=str, default="0.001", help="TLR Error threshold")
     parser.add_argument("--vs", type=str, default=9115, help="Virtual source")
+    parser.add_argument("--niter", type=int, default=30, help="Number of iterations of MDD")
+    parser.add_argument("--damp", type=float, default=0.2, help="Damping of MDD")
+
     parser.add_argument('--debug', default=True, action='store_true', help='Debug')
 
     args = parser.parse_args()
@@ -54,18 +62,18 @@ def main(parser):
     t0all = time.time()
 
     ######### SETUP GPUs #########
-    if mpirank == 0:
+    if mpirank == 0 and args.debug:
         print('Cuda count', cp.cuda.runtime.getDeviceCount())
         for idev in range(cp.cuda.runtime.getDeviceCount()):
-            print(cp.cuda.runtime.getDeviceProperties(idev)['name'])
+            print(f'Rank{mpirank} using GPU:', cp.cuda.runtime.getDeviceProperties(idev)['name'])
 
     cp.cuda.Device(device=mpirank).use()
     mempool = cp.get_default_memory_pool()
 
     ######### PROBLEM PARAMETERS (should be lifted out into a config file #########
     nfmax = args.nfmax  # max frequency for MDC (#samples)
-    n_iter = 30         # iterations
-    damp = 2e-1         # damping
+    n_iter = args.niter # number of iterations
+    damp = args.damp    # damping
 
     ######### DEFINE DATA AND FIGURES DIRECTORIES #########
     STORE_PATH=os.environ["STORE_PATH"]
@@ -73,12 +81,12 @@ def main(parser):
     if args.MVMType != "Dense":
         if args.TLRType != 'fp16int8':
             args.MVMType = "TLR" + args.TLRType
-            TARGET_FIG_PATH = join(FIG_PATH, f"MDDOve3D_OrderType{args.OrderType}_nb{args.nb}_acc{args.threshold}")
+            TARGET_FIG_PATH = join(FIG_PATH, f"{args.FigFolder}_OrderType{args.OrderType}_nb{args.nb}_acc{args.threshold}")
         else:
             args.MVMType = "TLR" + args.TLRType + "_bandlen{bandlen}"
-            TARGET_FIG_PATH = join(FIG_PATH, f"MDDOve3D_OrderType{args.OrderType}_nb{args.nb}_acc{args.threshold}")
+            TARGET_FIG_PATH = join(FIG_PATH, f"{args.FigFolder}_OrderType{args.OrderType}_nb{args.nb}_acc{args.threshold}")
     else:
-        TARGET_FIG_PATH = join(FIG_PATH, f"MDDOve3D_MVMType{args.MVMType}")
+        TARGET_FIG_PATH = join(FIG_PATH, f"{args.FigFolder}_MVMType{args.MVMType}")
 
     # create figure folder is not available
     if mpirank == 0:
@@ -128,46 +136,55 @@ def main(parser):
     print("-" * 80)
 
     ######### DEFINE GEOMETRY AND OTHER INPUTS #########
-    # Sources
-    ns = 26040
-
+    inputfile_aux = join(STORE_PATH, args.AuxFile)
+    inputdata_aux = np.load(inputfile_aux)
+    
     # Virtual sources grid
-    nrx = 177
-    drx = 20
-    nry = 90
-    dry = 20
+    nrx = inputdata_aux['nrx']
+    drx = inputdata_aux['drx']
+    nry = inputdata_aux['nry']
+    dry = inputdata_aux['dry']
     nr = nrx * nry
     ivs = args.vs
 
     # Time axis
-    ot, dt, nt = 0, 0.004, 1126
-    t = np.arange(nt) * dt
+    t = inputdata_aux['t']
+    ot, dt, nt = t[0], t[1], len(t)
+
 
     ######### DEFINE SORTING (OPTIONAL) #########
     if args.OrderType == "hilbert":
-        ny, nx, nz = 200, 330, 155
-        y, x, z = np.arange(ny)*15., np.arange(nx)*15., np.arange(nz)*15.
+        """
+        ny, nx, nz = inputdata_aux['ny'], inputdata_aux['nx'], inputdata_aux['nz']
+        y, x = np.arange(ny)*inputdata_aux['dy'], np.arange(nx)*inputdata_aux['dx']
 
-        srcx = np.arange(300,x[-1]-300, 20)
-        srcy = np.arange(300,y[-1]-300, 20)
+        # Sources
+        srcx = np.arange(inputdata_aux['osx'], x[-1]-inputdata_aux['osx'], inputdata_aux['dsx'])
+        srcy = np.arange(inputdata_aux['osy'], y[-1]-inputdata_aux['osy'], inputdata_aux['dsy'])
         SRCY, SRCX = np.meshgrid(srcy, srcx, indexing='ij')
         SRCX, SRCY = SRCX.ravel(), SRCY.ravel()
         # shift to original point and scale down
-        SRCPoints = [(int(x[0]/20.),int(x[1]/20.)) for x in zip(SRCX-300,SRCY-300)]
+        SRCPoints = [(int(x[0]/inputdata_aux['dsx']),int(x[1]/inputdata_aux['dsy'])) for x in zip(SRCX-inputdata_aux['osx'], SRCY-inputdata_aux['osy'])]
         
-        recx = np.arange(700,x[-1]-700, 20)
-        recy = np.arange(600,y[-1]-600, 20)
+        # Recs
+        recx = np.arange(inputdata_aux['orx'], x[-1]-inputdata_aux['orx'], inputdata_aux['drx'])
+        recy = np.arange(inputdata_aux['ory'], y[-1]-inputdata_aux['ory'], inputdata_aux['dry'])
         RECY, RECX = np.meshgrid(recy, recx, indexing='ij')
         RECX, RECY = RECX.ravel(), RECY.ravel()
         # shift to original point and scale down
-        RECPoints = [(int(x[0]/20.),int(x[1]/20.)) for x in zip(RECX-700,RECY-600)]
+        RECPoints = [(int(x[0]/inputdata_aux['drx']),int(x[1]/inputdata_aux['dry'])) for x in zip(RECX-inputdata_aux['orx'],RECY-inputdata_aux['ory'])]
 
-        hilbert_curve = HilbertCurve(12, 2)
+        hilbert_curve = HilbertCurve(args.PHilbertSrc, 2)
         hilbertcodes = hilbert_curve.distances_from_points(SRCPoints)
         srcidx = np.argsort(hilbertcodes).astype(np.int32)
-        hilbert_curve = HilbertCurve(12, 2)
+        hilbert_curve = HilbertCurve(args.PHilbertRec, 2)
         hilbertcodes = hilbert_curve.distances_from_points(RECPoints)
         recidx = np.argsort(hilbertcodes).astype(np.int32)
+        """
+        srcidx, recidx = gethilbertindex(inputdata_aux['ny'], inputdata_aux['nx'], inputdata_aux['dy'], inputdata_aux['dx'], 
+                                         inputdata_aux['osx'], inputdata_aux['dsx'], inputdata_aux['osy'], inputdata_aux['dsy'], 
+                                         inputdata_aux['orx'], inputdata_aux['drx'], inputdata_aux['ory'], inputdata_aux['dry'],
+                                         args.PHilbertSrc, args.PHilbertRec)
         
     ######### CREATE TLR-MVM OPERATOR #########
     if mpirank == 0:
@@ -195,7 +212,7 @@ def main(parser):
         print("-" * 80)
     comm.Barrier()
 
-    dRop = MDCmixed(mvmops, ns, nr, nt=nt, nfreq=nfmax, nv=1, dt=dt, dr=drx * dry, twosided=False,
+    dRop = MDCmixed(mvmops, args.M, nr, nt=nt, nfreq=nfmax, nv=1, dt=dt, dr=drx * dry, twosided=False,
                     conj=False)
 
     ######### CREATE DATA FOR MDD #########
@@ -208,7 +225,6 @@ def main(parser):
     gminus_filepath = join(STORE_PATH, args.PupFolder, gminus_filename)
     Gminus_vs = np.load(gminus_filepath).astype(np.float32)
     if args.OrderType == "hilbert":
-        print('Gminus_vs', Gminus_vs.shape, srcidx.max())
         Gminus_vs_reshuffled = Gminus_vs[:, srcidx]
     else:
         Gminus_vs_reshuffled = Gminus_vs

@@ -24,6 +24,6 @@ export STORE_PATH=/ibex/ai/home/ravasim/MDC-TLRMVM/
 export FIG_PATH=/home/ravasim/2022/Projects/MDC_TLRMVM_v2/Figs
 
 #run the application:
-mpirun -np 4 python $TLRMDCROOT/mdctlr/MDDOve3Dgpu.py \
---DataFolder compresseddata_full --M 26040 --N 15930 --MVMType TLR --TLRType fp32 \
+mpirun -np 4 python $TLRMDCROOT/app/MDDOve3DFull.py --AuxFile MDDOve3D_aux.npz --DataFolder compresseddata_full \
+--M 26040 --N 15930 --MVMType TLR --TLRType fp32 \
 --nb 256 --threshold 0.001 --ModeValue 8 --OrderType hilbert --nfmax 200 --vs 9115 --debug
