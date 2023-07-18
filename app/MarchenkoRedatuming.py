@@ -29,7 +29,7 @@ from pylops.basicoperators import Roll
 from mdctlr.inversiondist import MDCmixed
 from mdctlr.lsqr import lsqr
 from mdctlr.utils import voronoi_volumes
-from tlrmvm.tilematrix import TilematrixGPU_Ove3D
+from mdctlr.tlrmvm.tilematrix import TilematrixGPU_Ove3D
 
 
 def main(parser):
@@ -229,6 +229,7 @@ def main(parser):
         plt.savefig(join(TARGET_FIG_PATH, "analyticaldirectwave.jpg"))
 
     # Rearrange inputs according to matrix re-arrangement
+    idx = None
     if args.OrderType != 'normal':
         idx = np.load(join(STORE_PATH,'Mck_rearrangement.npy'))
         G0sub_ana_shuffled = G0sub_ana[:, idx]
@@ -274,7 +275,8 @@ def main(parser):
         # Load TLR kernel
         mvmops = TilematrixGPU_Ove3D(args.M, args.N, args.nb, 
                                      synthetic=False, datafolder=join(STORE_PATH,'compresseddata'), 
-                                     order=args.OrderType, acc=args.threshold, freqlist=Ownfreqlist, 
+                                     order=args.OrderType, srcidx=idx, recidx=idx,
+                                     acc=args.threshold, freqlist=Ownfreqlist, 
                                      suffix="Mck_freqslice_")
         mvmops.estimategpumemory()
         mvmops.loaduvbuffer()
@@ -291,9 +293,9 @@ def main(parser):
     comm.Barrier()
 
     dRop = MDCmixed(mvmops, ns, nr, nt=2*nt-1, nfreq=nfmax, nv=1, dt=dt, dr=2*darea, nb=args.nb,  acc=args.threshold,
-                    datafolder=join(STORE_PATH, 'compresseddata'), transpose=False, conj=False)
+                    datafolder=join(STORE_PATH, 'compresseddata'), conj=False)
     dR1op = MDCmixed(mvmops, ns, nr, nt=2*nt-1, nfreq=nfmax, nv=1, dt=dt, dr=2*darea, nb=args.nb,  acc=args.threshold,
-                     datafolder=join(STORE_PATH, 'compresseddata'), transpose=False, conj=True)
+                     datafolder=join(STORE_PATH, 'compresseddata'), conj=True)
     dRollop = Roll((2*nt-1) * nr,dims=(2*nt-1, nr),dir=0, shift=-1)
 
     dWop = Diagonal(w_shuffled.T.flatten())
@@ -316,14 +318,24 @@ def main(parser):
 
     if mpirank == 0 and args.debug:
         fig, ax = plt.subplots(1, 1, sharey=True, figsize=(16, 7))
-        ax.imshow(cp.asnumpy(dfd_plus), cmap='gray', extent=(0, nr, t[-1], -t[-1]))
+        im = ax.imshow(cp.asnumpy(dfd_plus), cmap='gray', extent=(0, nr, t[-1], -t[-1]))
         ax.set_title(r'$f_d^+$'), ax.set_xlabel(r'$x_R$'), ax.set_ylabel(r'$t$')
-        ax.axis('tight');
+        ax.axis('tight')
+        plt.colorbar(im)
         plt.savefig(join(TARGET_FIG_PATH, 'dfplus_shuffled.png'), bbox_inches='tight')
 
     # Create data
     dd = dWop*dRop*dfd_plus.flatten()
     dd = cp.concatenate((dd.reshape(2*nt-1, nr), cp.zeros((2*nt-1, nr), dtype=np.float32)))
+
+    if mpirank == 0 and args.debug:
+        fig, ax = plt.subplots(1, 1, sharey=True, figsize=(16, 7))
+        im = ax.imshow(cp.asnumpy(dd)[:2*nt-1], cmap='gray', extent=(0, nr, t[-1], -t[-1]))
+        ax.set_title(r'$d$'), ax.set_xlabel(r'$x_R$'), ax.set_ylabel(r'$t$')
+        ax.axis('tight')
+        plt.colorbar(im)
+        plt.savefig(join(TARGET_FIG_PATH, 'data_shuffled.png'), bbox_inches='tight')
+
 
     ######### RUN INVERSION #########
     if mpirank == 0:

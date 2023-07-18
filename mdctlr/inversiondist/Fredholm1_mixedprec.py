@@ -66,6 +66,7 @@ class Fredholm1mixed(LinearOperator):
         self.debug = False
 
     def _matvec(self, Invector):
+        print('matvec Fredh', self.mpirank, Invector) # NOTE: currently seems needed not to get nans
         t0 = time.time()
         self.opcount += 1
         if self.conj:
@@ -80,6 +81,8 @@ class Fredholm1mixed(LinearOperator):
         eachyfinal = np.zeros(self.nfreq * self.n).astype(np.csingle)
         for idx, ownfreq in enumerate(self.Ownfreqlist):
             eachyfinal[ownfreq * self.n : (ownfreq+1) * self.n] = ylist[idx]
+        if self.scaling is not None:
+            eachyfinal *= self.scaling
         yfinal = np.zeros_like(eachyfinal).astype(np.csingle)
         self.comm.Allreduce(eachyfinal, yfinal)
         t1 = time.time()
@@ -89,6 +92,7 @@ class Fredholm1mixed(LinearOperator):
         return yfinal
 
     def _rmatvec(self, Invector):
+        print('rmatvec Fredh', self.mpirank, Invector) # NOTE: currently seems needed not to get nans
         t0 = time.time()
         self.opcount += 1
         if not self.conj:
@@ -103,6 +107,8 @@ class Fredholm1mixed(LinearOperator):
         eachyfinal = np.zeros(self.nfreq * self.m).astype(np.csingle)
         for idx, ownfreq in enumerate(self.Ownfreqlist):
             eachyfinal[ownfreq * self.m : (ownfreq+1) * self.m] = ylist[idx]
+        if self.scaling is not None:
+            eachyfinal *= self.scaling
         yfinal = np.zeros_like(eachyfinal).astype(np.csingle)
         self.comm.Allreduce(eachyfinal, yfinal)
         t1 = time.time()

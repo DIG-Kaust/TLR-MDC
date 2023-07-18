@@ -38,6 +38,7 @@ def main(parser):
     parser.add_argument("--ModeValue", type=int, default=8, help="Rank mode")
     parser.add_argument("--M", type=int, default=9801, help="Number of sources/rows in seismic frequency data")
     parser.add_argument("--N", type=int, default=9801, help="Number of receivers/columns in seismic frequency data")
+    parser.add_argument("--ivsinv", type=int, default=880, help="Index of virtual source to invert for")
     parser.add_argument("--nb", type=int, default=256, help="TLR Tile size")
     parser.add_argument("--threshold", type=str, default="0.001", help="TLR Error threshold")
 
@@ -129,20 +130,23 @@ def main(parser):
     inputdata_aux = np.load(inputfile_aux)
 
     # Sources
-    #s = inputdata_aux['srcs'].T
-    #ns = s.shape[1]
+    s = inputdata_aux['srcs'].T
+    ns = s.shape[1]
 
     # Virtual sources grid
-    vsz = 650
-    nvsx = 71
-    dvsx = 20
-    ovsx = 200
-    nvsy = 41
-    dvsy = 20
-    ovsy = 200
+    vsz = inputdata_aux['vsz']
+    vsx = inputdata_aux['vsx']
+    vsy = inputdata_aux['vsy']
+    nvsx = len(vsx)
+    dvsx = vsx[1] - vsx[0]
+    ovsx = vsx[0]
+    nvsy = len(vsy)
+    dvsy = vsy[1] - vsy[0]
+    ovsy = vsy[0]
     nvs = nvsx * nvsy
-    ivsx, ivsy = 21, 19
-    ivsinv = ivsx * nvsy + ivsy
+    #ivsx, ivsy = 21, 19
+    #ivsinv = ivsx * nvsy + ivsy
+    ivsinv = args.ivsinv
 
     # Time axis
     t = inputdata_aux['t']
@@ -284,4 +288,4 @@ if __name__ == "__main__":
 
 # TO DO:
 # - Dense
-# - TLR gives NaN!
+# - Hilbert

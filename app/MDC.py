@@ -128,6 +128,7 @@ def main(parser):
     ######### LOAD AUXILIARY INPUTS (GEOMETRY, SUBSURFACE WAVEFIELDS, WAVELET) AND PREPARE FOR MCK #########
     inputfile_aux = join(STORE_PATH, args.AuxFile)
     inputdata_aux = np.load(inputfile_aux)
+    
     # Receivers
     r = inputdata_aux['recs'].T
     nr = r.shape[1]
@@ -137,11 +138,8 @@ def main(parser):
     # Virtual points
     vs = inputdata_aux['vs']
     # Time axis
-    #t = inputdata_aux['t']
-    #ot, dt, nt = t[0], t[1], len(t)
-    # Time axis
-    ot, dt, nt = 0, 2.5e-3, 601
-    t = np.arange(nt) * dt
+    t = inputdata_aux['t']
+    ot, dt, nt = t[0], t[1], len(t)
 
     # Find area of each volume - note that areas at the edges and on vertex are unbounded,
     # we will assume that they are and use the minimum are for all points in this example
@@ -160,6 +158,7 @@ def main(parser):
     G0sub = G0sub[wav_c:][:nt]
 
     # Rearrange inputs according to matrix re-arrangement
+    idx = None
     if args.OrderType != 'normal':
         idx = np.load(join(STORE_PATH, 'Mck_rearrangement.npy'))
         G0sub = G0sub[:, idx]
@@ -184,8 +183,8 @@ def main(parser):
         # Load TLR kernel
         mvmops = TilematrixGPU_Ove3D(args.M, args.N, args.nb, 
                                      synthetic=False, datafolder=join(STORE_PATH,'compresseddata'), 
-                                     order=args.OrderType, acc=args.threshold, 
-                                     freqlist=Ownfreqlist, suffix="Mck_freqslice_")
+                                     order=args.OrderType, srcidx=idx, recidx=idx,
+                                     acc=args.threshold, freqlist=Ownfreqlist, suffix="Mck_freqslice_")
         mvmops.estimategpumemory()
         mvmops.loaduvbuffer()
         mvmops.setcolB(1) # just 1 point
