@@ -8,37 +8,32 @@ import time
 class Fredholm1mixed(LinearOperator):
     r"""Fredholm integral of first kind with mixed precision TLR.
 
-    Implement a multi-dimensional Fredholm integral of first kind. Note that if
-    the integral is two dimensional, this can be directly implemented using
-    :class:`pylops.basicoperators.MatrixMult`. A multi-dimensional
-    Fredholm integral can be performed as a :class:`pylops.basicoperators.BlockDiag`
-    operator of a series of :class:`pylops.basicoperators.MatrixMult`. However,
-    here we take advantage of the structure of the kernel and perform it in a
-    more efficient manner.
+    Implement a multi-dimensional Fredholm integral of first kind using a kernel 
+    stored in mixed precision TLR format. The entire MVM operation is shipped
+    to the tlr-mvm C++/CUDA library via PyBind11.
 
     Parameters
     ----------
-    U : :obj:`numpy.ndarray`
-        Multi-dimensional convolution U basis of kernel of size
-        :math:`[n_{slice} \times n_x \times n_y]`
-    V : :obj:`numpy.ndarray`
-        Multi-dimensional convolution U basis of kernel of size
-        :math:`[n_{slice} \times n_x \times n_y]`
-    nz : :obj:`numpy.ndarray`, optional
-        Additional dimension of model
-    saveGt : :obj:`bool`, optional
-        Save ``G`` and ``G^H`` to speed up the computation of adjoint
-        (``True``) or create ``G^H`` on-the-fly (``False``)
-        Note that ``saveGt=True`` will double the amount of required memory
-    usematmul : :obj:`bool`, optional
-        Use :func:`numpy.matmul` (``True``) or for-loop with :func:`numpy.dot`
-        (``False``). As it is not possible to define which approach is more
-        performant (this is highly dependent on the size of ``G`` and input
-        arrays as well as the hardware used in the compution), we advise users
-        to time both methods for their specific problem prior to making a
-        choice.
+    TLRop : :obj:`tlrmvm.tilematrix.TilematrixGPU_Ove3D`
+        TLR-MVM operator
+    nb : :obj:`int`, optional
+        Tile size of TLR compression
+    acc : :obj:`str`, optional
+        Accuracy of TLR compression
+    nfreq : :obj:`int`
+        Number of frequencies
+    n : :obj:`int`
+        Number of rows of kernel matrices
+    m : :obj:`int`
+        Number of columns of kernel matrices
+    datafolder : :obj:`str`, optional
+        Path of folder containing U and V bases for TLR-MVM
+    conj : :obj:`str`, optional
+        Perform Fredholm integral computation with complex conjugate of ``G``
+    scaling : :obj:`float`, optional
+        Scaling to apply to output (if None no scaling is applied)
     dtype : :obj:`str`, optional
-        Type of elements in input array.
+        Dtype of operator
 
     Attributes
     ----------
@@ -48,52 +43,18 @@ class Fredholm1mixed(LinearOperator):
         Operator contains a matrix that can be solved
         explicitly (``True``) or not (``False``)
 
-    Notes
-    -----
-    A multi-dimensional Fredholm integral of first kind can be expressed as
-
-    .. math::
-
-        d(sl, x, z) = \int{G(sl, x, y) m(sl, y, z) dy}
-        \quad \forall sl=1,n_{slice}
-
-    on the other hand its adjoin is expressed as
-
-    .. math::
-
-        m(sl, y, z) = \int{G^*(sl, y, x) d(sl, x, z) dx}
-        \quad \forall sl=1,n_{slice}
-
-    In discrete form, this operator can be seen as a block-diagonal
-    matrix multiplication:
-
-    .. math::
-        \begin{bmatrix}
-            \mathbf{G}_{sl1}  & \mathbf{0}       &  ... & \mathbf{0} \\
-            \mathbf{0}        & \mathbf{G}_{sl2} &  ... & \mathbf{0} \\
-            ...               & ...              &  ... & ...        \\
-            \mathbf{0}        & \mathbf{0}       &  ... & \mathbf{G}_{slN}
-        \end{bmatrix}
-        \begin{bmatrix}
-            \mathbf{m}_{sl1}  \\
-            \mathbf{m}_{sl2}  \\
-            ...     \\
-            \mathbf{m}_{slN}
-        \end{bmatrix}
-
     """
     def __init__(self, TLRop, nb, acc, nfreq, n, m, datafolder,
                  conj=False, scaling=None, dtype='float64'):
         self.nb = nb
         self.acc = acc
         self.nfreq = nfreq
-        # here m is N, and n is M !!!!!!!!
         self.n, self.m = n, m
         self.datafolder = datafolder
         self.conj = conj
         self.scaling = scaling
         self.tlrmat = TLRop
-        self.shape = (self.nfreq * self.n,self.nfreq * self.m)
+        self.shape = (self.nfreq * self.n, self.nfreq * self.m)
         self.dtype = np.dtype(dtype)
         self.explicit = False
         self.Ownfreqlist = self.tlrmat.Ownfreqlist
@@ -106,30 +67,16 @@ class Fredholm1mixed(LinearOperator):
 
     def _matvec(self, Invector):
         t0 = time.time()
-        # Invector = cp.asnumpy(Invector)
         self.opcount += 1
-        # invecmax = np.max(np.abs(Invector))
-        # if self.debug:
-        #     if self.mpirank == 0:
-        #         print("matvec transpose and conjugate", False, self.conj, " for ", self.opcount)
-        # scalex = False
-        # if invecmax > 1e-12:
-        #     scalex = True
-        #     Invector /= invecmax
-        # if self.conj:
-        #     Invector = np.conj(Invector)  
         if self.conj:
             Invector = cp.conj(Invector)
-        #self.tlrmat.SetTransposeConjugate(transpose=False, conjugate=self.conj)
+        # Split input over frequencies across ranks
         spx = cp.split(Invector, self.nfreq)
         xlist = cp.concatenate([spx[i] for i in self.Ownfreqlist])
-        # y = self.tlrmat.mvm(False, xlist)
-        ydev = self.tlrmat.tlrmvmgpuinput(xlist,transpose=False)
-        # if self.scaling is not None:
-        #     y *= self.scaling
-        # if scalex:
-        #     y *= invecmax
+        # Run distributed tlrmvm
+        ydev = self.tlrmat.tlrmvmgpuinput(xlist, transpose=False)
         ylist = np.split(ydev.get(), len(self.Ownfreqlist))
+        # Reconstruct total output in each rank
         eachyfinal = np.zeros(self.nfreq * self.n).astype(np.csingle)
         for idx, ownfreq in enumerate(self.Ownfreqlist):
             eachyfinal[ownfreq * self.n : (ownfreq+1) * self.n] = ylist[idx]
@@ -139,34 +86,20 @@ class Fredholm1mixed(LinearOperator):
         yfinal = cp.asarray(yfinal)
         if self.conj:
             yfinal = cp.conj(yfinal)  
-        # if self.mpirank == 0:
-        #     print("Fredholm matvec time: {:.6f} s.".format(t1-t0))
         return yfinal
 
     def _rmatvec(self, Invector):
         t0 = time.time()
-        # Invector = cp.asnumpy(Invector)
         self.opcount += 1
-        # invecmax = np.max(np.abs(Invector))
-        # scalex = False
-        # if invecmax > 1e-12:
-        #     scalex = True
-        #     Invector /= invecmax
-        # if not self.conj:
-        #     Invector = np.conj(Invector)  
         if not self.conj:
             Invector = cp.conj(Invector)
-        #self.tlrmat.SetTransposeConjugate(transpose=True, conjugate=not self.conj)
+        # Split input over frequencies across ranks
         spx = cp.split(Invector, self.nfreq)
         xlist = cp.concatenate([spx[i] for i in self.Ownfreqlist])
-        # y = self.tlrmat.mvm(True, xlist)
-        # if self.scaling is not None:
-        #     y *= self.scaling
-        # if scalex:
-        #     y *= invecmax
-        # sy = np.split(y, len(self.Ownfreqlist))
+        # Run distributed tlrmvm
         ydev = self.tlrmat.tlrmvmgpuinput(xlist,transpose=True)
         ylist = np.split(ydev.get(),len(self.Ownfreqlist))
+        # Reconstruct total output in each rank
         eachyfinal = np.zeros(self.nfreq * self.m).astype(np.csingle)
         for idx, ownfreq in enumerate(self.Ownfreqlist):
             eachyfinal[ownfreq * self.m : (ownfreq+1) * self.m] = ylist[idx]
@@ -176,6 +109,4 @@ class Fredholm1mixed(LinearOperator):
         yfinal = cp.asarray(yfinal)
         if not self.conj:
             yfinal = cp.conj(yfinal)  
-        # if self.mpirank == 0:
-        #     print("Fredholm rmatvec time: {:.6f} s.".format(t1-t0))
         return yfinal
