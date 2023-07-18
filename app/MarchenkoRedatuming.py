@@ -2,7 +2,7 @@
 # @copyright (c) 2021- King Abdullah University of Science and
 #                      Technology (KAUST). All rights reserved.
 #
-# Author: Matteo, Ravasi, Yuxi Hong
+# Authors: Matteo, Ravasi, Yuxi Hong
 # Description: Marchenko redatuming with TLR-MDC and
 # geometric-reordering
 ##################################################################
@@ -29,7 +29,7 @@ from pylops.basicoperators import Roll
 from mdctlr.inversiondist import MDCmixed
 from mdctlr.lsqr import lsqr
 from mdctlr.utils import voronoi_volumes
-from mdctlr.tlrmvm.tilematrix import TilematrixGPU_Ove3D
+from mdctlr.tlrmvm.tilematrix import TilematrixGPU
 
 
 def main(parser):
@@ -273,11 +273,11 @@ def main(parser):
         #     print("Init dense GPU Time is ", t1-t0)
     else:
         # Load TLR kernel
-        mvmops = TilematrixGPU_Ove3D(args.M, args.N, args.nb, 
-                                     synthetic=False, datafolder=join(STORE_PATH,'compresseddata'), 
-                                     order=args.OrderType, srcidx=idx, recidx=idx,
-                                     acc=args.threshold, freqlist=Ownfreqlist, 
-                                     suffix="Mck_freqslice_")
+        mvmops = TilematrixGPU(args.M, args.N, args.nb, 
+                               synthetic=False, datafolder=join(STORE_PATH,'compresseddata'), 
+                               order=args.OrderType, srcidx=idx, recidx=idx,
+                               acc=args.threshold, freqlist=Ownfreqlist, 
+                               suffix="Mck_freqslice_")
         mvmops.estimategpumemory()
         mvmops.loaduvbuffer()
         mvmops.setcolB(1) # just 1 point

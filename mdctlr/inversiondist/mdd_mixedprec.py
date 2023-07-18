@@ -41,7 +41,7 @@ def MDCmixed(TLRop, ns, nr, nt, nfreq, nv, dt=1., dr=1., twosided=True,
         MDC operator has both negative and positive time (``True``) or
         only positive (``False``)
     dtype : :obj:`str`, optional
-        *Deprecated*, will be removed in v2.0.0
+        Dtype of operator
     fftengine : :obj:`str`, optional
         Engine used for fft computation (``numpy`` or ``fftw``)
     conj : :obj:`str`, optional

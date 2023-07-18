@@ -22,7 +22,7 @@ from pylops.utils.wavelets import *
 from pylops.utils.tapers import *
 from mdctlr.inversiondist import MDCmixed
 from mdctlr.utils import voronoi_volumes
-from mdctlr.tlrmvm.tilematrix import TilematrixGPU_Ove3D
+from mdctlr.tlrmvm.tilematrix import TilematrixGPU
 
 
 def main(parser):
@@ -66,8 +66,8 @@ def main(parser):
     wavfreq = args.wavfreq   # Ricker wavelet peak frequency
 
     ######### DEFINE DATA AND FIGURES DIRECTORIES #########
-    STORE_PATH=os.environ["STORE_PATH"]
-    FIG_PATH=os.environ["FIG_PATH"]
+    STORE_PATH = os.environ["STORE_PATH"]
+    FIG_PATH = os.environ["FIG_PATH"]
     if args.MVMType != "Dense":
         if args.TLRType != 'fp16int8':
             args.MVMType = "TLR" + args.TLRType
@@ -181,10 +181,10 @@ def main(parser):
         #     print("Init dense GPU Time is ", t1-t0)
     else:
         # Load TLR kernel
-        mvmops = TilematrixGPU_Ove3D(args.M, args.N, args.nb, 
-                                     synthetic=False, datafolder=join(STORE_PATH,'compresseddata'), 
-                                     order=args.OrderType, srcidx=idx, recidx=idx,
-                                     acc=args.threshold, freqlist=Ownfreqlist, suffix="Mck_freqslice_")
+        mvmops = TilematrixGPU(args.M, args.N, args.nb, 
+                               synthetic=False, datafolder=join(STORE_PATH,'compresseddata'), 
+                               order=args.OrderType, srcidx=idx, recidx=idx,
+                               acc=args.threshold, freqlist=Ownfreqlist, suffix="Mck_freqslice_")
         mvmops.estimategpumemory()
         mvmops.loaduvbuffer()
         mvmops.setcolB(1) # just 1 point
@@ -261,4 +261,3 @@ if __name__ == "__main__":
 
 # TO DO:
 # - Dense
-# - TLR gives NaN!

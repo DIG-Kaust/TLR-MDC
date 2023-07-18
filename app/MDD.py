@@ -23,7 +23,7 @@ from pylops.utils.wavelets import *
 from pylops.utils.tapers import *
 from mdctlr.inversiondist import MDCmixed
 from mdctlr.lsqr import lsqr
-from mdctlr.tlrmvm.tilematrix import TilematrixGPU_Ove3D
+from mdctlr.tlrmvm.tilematrix import TilematrixGPU
 
 
 def main(parser):
@@ -172,10 +172,10 @@ def main(parser):
         #     print("Init dense GPU Time is ", t1-t0)
     else:
         # Load TLR kernel
-        mvmops = TilematrixGPU_Ove3D(args.M, args.N, args.nb, 
-                                     synthetic=False, datafolder=join(STORE_PATH,'compresseddata'), 
-                                     acc=args.threshold, freqlist=Ownfreqlist, order=args.OrderType,
-                                     mode=4, prefix="Gplus_freqslice_", suffix="Gplus_freqslice_")
+        mvmops = TilematrixGPU(args.M, args.N, args.nb, 
+                               synthetic=False, datafolder=join(STORE_PATH,'compresseddata'), 
+                               acc=args.threshold, freqlist=Ownfreqlist, order=args.OrderType,
+                               mode=4, prefix="Gplus_freqslice_", suffix="Gplus_freqslice_")
         mvmops.estimategpumemory()
         mvmops.loaduvbuffer()
         mvmops.setcolB(1) # just 1 point

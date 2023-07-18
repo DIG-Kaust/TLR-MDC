@@ -24,7 +24,7 @@ from pylops.utils.wavelets import *
 from pylops.utils.tapers import *
 from mdctlr.inversiondist import MDCmixed
 from mdctlr.lsqr import lsqr
-from mdctlr.tlrmvm.tilematrix import TilematrixGPU_Ove3D
+from mdctlr.tlrmvm.tilematrix import TilematrixGPU
 from mdctlr.tlrmvm.reorderingindex import gethilbertindex
 
 
@@ -171,10 +171,10 @@ def main(parser):
     else:
         # Load TLR kernel
         problems = [f'Mode{args.ModeValue}_Order{args.OrderType}_{i}' for i in Ownfreqlist]
-        mvmops = TilematrixGPU_Ove3D(args.M, args.N, args.nb, 
-                                     synthetic=False, datafolder=join(STORE_PATH, args.DataFolder), 
-                                     acc=args.threshold, freqlist=Ownfreqlist,
-                                     order=args.OrderType, srcidx=srcidx, recidx=recidx)
+        mvmops = TilematrixGPU(args.M, args.N, args.nb, 
+                               synthetic=False, datafolder=join(STORE_PATH, args.DataFolder), 
+                               acc=args.threshold, freqlist=Ownfreqlist,
+                               order=args.OrderType, srcidx=srcidx, recidx=recidx)
         mvmops.estimategpumemory()
         mvmops.loaduvbuffer()
         mvmops.setcolB(1) # just 1 point

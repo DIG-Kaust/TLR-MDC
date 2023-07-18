@@ -20,7 +20,7 @@ def randomarray2d(d1,d2,dtype):
     return (np.random.rand(d1,d2) + 1j * np.random.rand(d1,d2)).astype(dtype)
 
 
-class Tilematrix_Ove3D:
+class Tilematrix:
     def __init__(self, m, n, nb, synthetic=False, acc=None, freqlist=None, 
                  datafolder=None):
         self.m = m
@@ -148,47 +148,7 @@ class Tilematrix_Ove3D:
             yres = np.vstack(ybuf)
         return yres[:self.m,:]
 
-"""
-def hilbertIndexing():
-    ny, nx, nz = 200, 330, 155
-    y, x, z = np.arange(ny)*15., np.arange(nx)*15., np.arange(nz)*15.
-    # data size
-    nt, nrx, nry = 1126, 177, 90
-    dt = 0.004
-    dr = 20
-    nfmax = 260
-    # fk
-    nfft=nt
-    nfftk=2**8
-    rho_sep = 1000.0 # density at separation level
-    vel_sep = 1750.0 # velocity at separation level
-    critical = 0.9
-    ntaper = 9
-    cutoff = 1e7
-    ## Acquisition
-    srcx = np.arange(300,x[-1]-300, 20)
-    srcy = np.arange(300,y[-1]-300, 20)
-    SRCY, SRCX = np.meshgrid(srcy, srcx, indexing='ij')
-    SRCX, SRCY = SRCX.ravel(), SRCY.ravel()
-    # shift to original point and scale down
-    SRCPoints = [(int(x[0]/20.),int(x[1]/20.)) for x in zip(SRCX-300,SRCY-300)]
-    recx = np.arange(700,x[-1]-700, 20)
-    recy = np.arange(600,y[-1]-600, 20)
-    RECY, RECX = np.meshgrid(recy, recx, indexing='ij')
-    RECX, RECY = RECX.ravel(), RECY.ravel()
-    # shift to original point and scale down
-    RECPoints = [(int(x[0]/20.),int(x[1]/20.)) for x in zip(RECX-700,RECY-600)]
-    nsrc, nrec = SRCX.size, RECX.size
-    hilbert_curve = HilbertCurve(12, 2)
-    hilbertcodes = hilbert_curve.distances_from_points(SRCPoints)
-    srcidx = np.argsort(hilbertcodes).astype(np.int32)
-    hilbert_curve = HilbertCurve(12, 2)
-    hilbertcodes = hilbert_curve.distances_from_points(RECPoints)
-    recidx = np.argsort(hilbertcodes).astype(np.int32)
-    return srcidx, recidx
-"""
-
-class TilematrixGPU_Ove3D:
+class TilematrixGPU:
     def __init__(self, m, n, nb, synthetic=False, acc=None, freqlist=None, 
                  datafolder=None, ranklist=None, 
                  order="hilbert", srcidx=None, recidx=None,
@@ -250,6 +210,7 @@ class TilematrixGPU_Ove3D:
             ccutlrconfig_setyuyv(config,colB)
  
     def tlrmmm(self,Blist,transpose=False,conjugate=False):
+        # NOT SURE WHAT IS BLIST!!
         if self.order == "hilbert":
             for idx,B in enumerate(Blist):
                 Blist[idx] = B[self.recidx]
@@ -274,17 +235,7 @@ class TilematrixGPU_Ove3D:
         return ylist
 
     def tlrmvmgpuinput(self,B,transpose=False,conjugate=False):
-        # if self.order == "hilbert":
-        #     for idx,B in enumerate(Blist):
-        #         Blist[idx] = B[self.recidx]
-        # assert(len(Blist) == len(self.rankfilelist))
-        # Brows = self.m if transpose else self.n
         yrows = self.m if not transpose else self.n
-        
-        # assert(Blist[0].shape[0] == Brows)
-        # colB = Blist[0].shape[1]
-        # B = np.concatenate([x.flatten(order='F') for x in Blist])
-        # B = cp.array(B) if not conjugate else cp.array(np.conjugate(B))
         y = cp.zeros(yrows*1*len(self.rankfilelist),dtype=np.csingle)
         if not transpose:
             cucTlrmmmBatched(self.cuconfiglist,B.data.ptr,1,y.data.ptr)
