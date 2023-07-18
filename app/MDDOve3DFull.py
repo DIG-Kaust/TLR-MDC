@@ -154,33 +154,6 @@ def main(parser):
 
     ######### DEFINE SORTING (OPTIONAL) #########
     if args.OrderType == "hilbert":
-        """
-        ny, nx, nz = inputdata_aux['ny'], inputdata_aux['nx'], inputdata_aux['nz']
-        y, x = np.arange(ny)*inputdata_aux['dy'], np.arange(nx)*inputdata_aux['dx']
-
-        # Sources
-        srcx = np.arange(inputdata_aux['osx'], x[-1]-inputdata_aux['osx'], inputdata_aux['dsx'])
-        srcy = np.arange(inputdata_aux['osy'], y[-1]-inputdata_aux['osy'], inputdata_aux['dsy'])
-        SRCY, SRCX = np.meshgrid(srcy, srcx, indexing='ij')
-        SRCX, SRCY = SRCX.ravel(), SRCY.ravel()
-        # shift to original point and scale down
-        SRCPoints = [(int(x[0]/inputdata_aux['dsx']),int(x[1]/inputdata_aux['dsy'])) for x in zip(SRCX-inputdata_aux['osx'], SRCY-inputdata_aux['osy'])]
-        
-        # Recs
-        recx = np.arange(inputdata_aux['orx'], x[-1]-inputdata_aux['orx'], inputdata_aux['drx'])
-        recy = np.arange(inputdata_aux['ory'], y[-1]-inputdata_aux['ory'], inputdata_aux['dry'])
-        RECY, RECX = np.meshgrid(recy, recx, indexing='ij')
-        RECX, RECY = RECX.ravel(), RECY.ravel()
-        # shift to original point and scale down
-        RECPoints = [(int(x[0]/inputdata_aux['drx']),int(x[1]/inputdata_aux['dry'])) for x in zip(RECX-inputdata_aux['orx'],RECY-inputdata_aux['ory'])]
-
-        hilbert_curve = HilbertCurve(args.PHilbertSrc, 2)
-        hilbertcodes = hilbert_curve.distances_from_points(SRCPoints)
-        srcidx = np.argsort(hilbertcodes).astype(np.int32)
-        hilbert_curve = HilbertCurve(args.PHilbertRec, 2)
-        hilbertcodes = hilbert_curve.distances_from_points(RECPoints)
-        recidx = np.argsort(hilbertcodes).astype(np.int32)
-        """
         srcidx, recidx = gethilbertindex(inputdata_aux['ny'], inputdata_aux['nx'], inputdata_aux['dy'], inputdata_aux['dx'], 
                                          inputdata_aux['osx'], inputdata_aux['dsx'], inputdata_aux['osy'], inputdata_aux['dsy'], 
                                          inputdata_aux['orx'], inputdata_aux['drx'], inputdata_aux['ory'], inputdata_aux['dry'],
