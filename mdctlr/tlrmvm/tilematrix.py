@@ -11,6 +11,7 @@ import cupy as cp
 from pytlr import *
 import time
 from hilbertcurve.hilbertcurve import HilbertCurve
+from mdctlr.tlrmvm.reorderingindex import gethilbertindex
 
 def randomarray(size,dtype):
     return (np.random.rand(size) + 1j * np.random.rand(size)).astype(dtype)
@@ -147,6 +148,7 @@ class Tilematrix_Ove3D:
             yres = np.vstack(ybuf)
         return yres[:self.m,:]
 
+"""
 def hilbertIndexing():
     ny, nx, nz = 200, 330, 155
     y, x, z = np.arange(ny)*15., np.arange(nx)*15., np.arange(nz)*15.
@@ -184,11 +186,13 @@ def hilbertIndexing():
     hilbertcodes = hilbert_curve.distances_from_points(RECPoints)
     recidx = np.argsort(hilbertcodes).astype(np.int32)
     return srcidx, recidx
+"""
 
 class TilematrixGPU_Ove3D:
     def __init__(self, m, n, nb, synthetic=False, acc=None, freqlist=None, 
-                 datafolder=None , ranklist=None, order="hilbert", streamsize=1, 
-                 mode=8, prefix=None, suffix=None):
+                 datafolder=None, ranklist=None, 
+                 order="hilbert", srcidx=None, recidx=None,
+                 streamsize=1, mode=8, prefix=None, suffix=None):
         prefix = "" if prefix is None else prefix
         suffix = "" if suffix is None else suffix
         self.m = m
@@ -217,10 +221,11 @@ class TilematrixGPU_Ove3D:
         self.cuconfiglist = [ccuTlrConfig(self.m,self.n,self.nb,list(x.flatten(order='F')),"") for x in self.rankmatlist]
         self.cuconfiglist[0].streaminit(streamsize)
         self.colB = 1
-        self.srcidx,self.recidx = hilbertIndexing()
-        self.reversesrcidx = np.zeros_like(self.srcidx)
-        for idx,val in enumerate(self.srcidx):
-            self.reversesrcidx[val] = idx
+        if self.order == "hilbert":
+            self.srcidx, self.recidx = srcidx, recidx
+            self.reversesrcidx = np.zeros_like(self.srcidx)
+            for idx,val in enumerate(self.srcidx):
+                self.reversesrcidx[val] = idx
 
     def estimategpumemory(self):
         totalrank = np.sum([np.sum(x) for x in self.rankmatlist])
@@ -238,7 +243,6 @@ class TilematrixGPU_Ove3D:
             self.vlist = [np.fromfile(vfile,dtype=np.csingle) for vfile in self.vfilelist]
             for idx,config in enumerate(self.cuconfiglist):
                 ccutlrconfig_setuv(config,self.ulist[idx],self.vlist[idx])
-
 
     def setcolB(self,colB):
         self.colB = colB

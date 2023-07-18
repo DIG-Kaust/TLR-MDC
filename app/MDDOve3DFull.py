@@ -153,6 +153,7 @@ def main(parser):
 
 
     ######### DEFINE SORTING (OPTIONAL) #########
+    srcidx, recidx = None, None
     if args.OrderType == "hilbert":
         srcidx, recidx = gethilbertindex(inputdata_aux['ny'], inputdata_aux['nx'], inputdata_aux['dy'], inputdata_aux['dx'], 
                                          inputdata_aux['osx'], inputdata_aux['dsx'], inputdata_aux['osy'], inputdata_aux['dsy'], 
@@ -171,7 +172,9 @@ def main(parser):
         # Load TLR kernel
         problems = [f'Mode{args.ModeValue}_Order{args.OrderType}_{i}' for i in Ownfreqlist]
         mvmops = TilematrixGPU_Ove3D(args.M, args.N, args.nb, 
-            synthetic=False, datafolder=join(STORE_PATH, args.DataFolder), acc=args.threshold,freqlist=Ownfreqlist)
+                                     synthetic=False, datafolder=join(STORE_PATH, args.DataFolder), 
+                                     acc=args.threshold, freqlist=Ownfreqlist,
+                                     order=args.OrderType, srcidx=srcidx, recidx=recidx)
         mvmops.estimategpumemory()
         mvmops.loaduvbuffer()
         mvmops.setcolB(1) # just 1 point
