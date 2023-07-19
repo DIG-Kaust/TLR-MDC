@@ -23,7 +23,7 @@ def zigzag(start_freq, end_freq, nodesize):
             splitfreqlist.append([x for x in tmp])
         reverse = ~reverse
 
-    def getfreqlist(mpirank,start_frequency = 0):
+    def getfreqlist(mpirank, start_frequency=0):
         Ownfreqlist = []
         for x in splitfreqlist:
             if len(x) > mpirank:
@@ -32,5 +32,5 @@ def zigzag(start_freq, end_freq, nodesize):
 
     freqmap = {}
     for x in range(nodesize):
-        freqmap[x] = getfreqlist(x,start_freq)
-    return freqmap
+        freqmap[x] = getfreqlist(x, start_freq)
+    return freqmap, splitfreqlist

@@ -21,12 +21,12 @@ export STORE_PATH=$STORE_PATH
 # Run experiments
 
 ## Dense (works with tlrmvm master)
-mpirun -np 2 python $TLRMDCROOT/mdctlr/MDD.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType Dense --nfmax 50 --debug
+mpirun -np 2 python $TLRMDCROOT/app/MDD.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType Dense --nfmax 50 --debug
 
 ## TLR-FP32 Normal (works with tlrmvm yuxi/dev)
-mpirun -np 2 python $TLRMDCROOT/mdctlr/MDD.py --AuxFile 3DMarchenko_auxiliary_2.npz --M 9801 --N 2911 --MVMType TLR --TLRType fp32 \
+mpirun -np 2 python $TLRMDCROOT/app/MDD.py --AuxFile 3DMarchenko_auxiliary_2.npz --M 9801 --N 2911 --MVMType TLR --TLRType fp32 \
   --nb 128 --ModeValue 4 --OrderType normal --nfmax 150 --debug
 
 ## TLR-FP16-Normal (works with tlrmvm yuxi/dev)
-mpirun -np 2 python $TLRMDCROOT/mdctlr/MDD.py --AuxFile 3DMarchenko_auxiliary_2.npz --M 9801 --N 2911 --MVMType TLR --TLRType fp16 \
+mpirun -np 2 python $TLRMDCROOT/app/MDD.py --AuxFile 3DMarchenko_auxiliary_2.npz --M 9801 --N 2911 --MVMType TLR --TLRType fp16 \
   --nb 128 --ModeValue 4 --OrderType normal --nfmax 150 --debug

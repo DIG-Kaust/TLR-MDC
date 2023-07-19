@@ -30,6 +30,8 @@ from mdctlr.inversiondist import MDCmixed
 from mdctlr.lsqr import lsqr
 from mdctlr.utils import voronoi_volumes
 from mdctlr.tlrmvm.tilematrix import TilematrixGPU
+from mdctlr.densemvm import DenseGPU
+from mdctlr.zigzag import zigzag
 
 
 def main(parser):
@@ -112,27 +114,8 @@ def main(parser):
 
     ######### DEFINE FREQUENCIES TO ASSIGN TO EACH MPI PROCESS #########
     Totalfreqlist = [x for x in range(nfmax)]
-    splitfreqlist = []
-    cnt = 0
-    reverse = False
-    while cnt < nfmax:
-        tmp = []
-        idx = 0
-        while idx < mpisize:
-            tmp.append(cnt)
-            cnt += 1
-            if cnt >= nfmax:
-                break
-            idx += 1
-        if reverse:
-            splitfreqlist.append([x for x in tmp[::-1]])
-        else:
-            splitfreqlist.append([x for x in tmp])
-        reverse = ~reverse
-    Ownfreqlist = []
-    for x in splitfreqlist:
-        if len(x) > mpirank:
-            Ownfreqlist.append(x[mpirank])
+    Ownfreqlist, splitfreqlist = zigzag(0, nfmax, mpisize)
+    Ownfreqlist = Ownfreqlist[mpirank]
     sleep(mpirank * 0.1)
     if mpirank == 0:
         print('Frequencies allocation:')
@@ -263,14 +246,14 @@ def main(parser):
 
     if args.MVMType == "Dense":
         # Load dense kernel (need to check it...)
-        pass
-        # dev = cp.cuda.Device(mpirank)
-        # dev.use()
-        # t0 = time.time()
-        # mvmops = DenseGPU(Ownfreqlist, Totalfreqlist, splitfreqlist, args.nfmax, STORE_PATH)
-        # t1 = time.time()
-        # if mpirank == 0:
-        #     print("Init dense GPU Time is ", t1-t0)
+        dev = cp.cuda.Device(mpirank)
+        dev.use()
+        t0 = time.time()
+        mvmops = DenseGPU(Ownfreqlist, Totalfreqlist, splitfreqlist, args.nfmax, 
+                          STORE_PATH)
+        t1 = time.time()
+        if mpirank == 0:
+            print("Init dense GPU Time is ", t1-t0)
     else:
         # Load TLR kernel
         mvmops = TilematrixGPU(args.M, args.N, args.nb, 

@@ -23,9 +23,12 @@ export PYTHONDONTWRITEBYTECODE=1 # disable generation of __pycache__ folder
 export STORE_PATH=/ibex/ai/home/ravasim/ravasim_OLDscratch/MDC-TLRMVM/
 export FIG_PATH=/home/ravasim/2022/Projects/MDC_TLRMVM_v2/Figs
 
+# run the application (Dense):
+mpirun -np 4 python $TLRMDCROOT/app/MarchenkoRedatuming.py --AuxFile 3DMarchenko_aux.npz --MVMType Dense --nfmax 100  --debug
+
 # run the application (TLR-FP16-Normal):
-#mpirun -np 4 python $TLRMDCROOT/app/MarchenkoRedatuming.py --AuxFile 3DMarchenko_aux.npz --MVMType TLR --TLRType fp16 \
-#  --ModeValue 8 --OrderType normal --debug
+mpirun -np 4 python $TLRMDCROOT/app/MarchenkoRedatuming.py --AuxFile 3DMarchenko_aux.npz --MVMType TLR --TLRType fp16 \
+  --ModeValue 8 --OrderType normal --debug
 
 # run the application (TLR-FP16-Hilbert):
 mpirun -np 4 python $TLRMDCROOT/app/MarchenkoRedatuming.py --AuxFile 3DMarchenko_aux.npz --MVMType TLR --TLRType fp16 \

@@ -21,20 +21,20 @@ export STORE_PATH=$STORE_PATH
 # Run experiments
 
 ## Dense
-mpirun -np 2 python $TLRMDCROOT/mdctlr/MarchenkoRedatuming.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType Dense --debug
+mpirun -np 2 python $TLRMDCROOT/app/MarchenkoRedatuming.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType Dense --debug
 
 ## TLR-FP16-Normal
-mpirun -np 2 python $TLRMDCROOT/mdctlr/MarchenkoRedatuming.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType fp16 \
+mpirun -np 2 python $TLRMDCROOT/app/MarchenkoRedatuming.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType fp16 \
   --ModeValue 8 --OrderType normal --nfmax 100 --debug
 
 ## TLR-FP32-Hilbert
-mpirun -np 2 python $TLRMDCROOT/mdctlr/MarchenkoRedatuming.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType fp32 \
+mpirun -np 2 python $TLRMDCROOT/app/MarchenkoRedatuming.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType fp32 \
   --ModeValue 8 --OrderType hilbert --nfmax 100  --debug
 
 ## TLR-FP16-Hilbert
-mpirun -np 2 python $TLRMDCROOT/mdctlr/MarchenkoRedatuming.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType fp16 \
+mpirun -np 2 python $TLRMDCROOT/app/MarchenkoRedatuming.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType fp16 \
   --ModeValue 8 --OrderType hilbert --debug
 
 ## TLR-INT8-Hilbert
-mpirun -np 2 python $TLRMDCROOT/mdctlr/MarchenkoRedatuming.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType int8 \
+mpirun -np 2 python $TLRMDCROOT/app/MarchenkoRedatuming.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType int8 \
   --ModeValue 8 --OrderType hilbert --debug

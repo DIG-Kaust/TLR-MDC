@@ -16,7 +16,8 @@ class YObj:
 
 class DenseGPU:
     def __init__(self, Ownfreqlist, Totalfreqlist, Splitfreqlist, nfmax, datasetprefix,
-                 foldername='Mck_freqslices', fileprefix='Mck_freqslice', filesuffix='_sub1', matname='Rfreq'):
+                 foldername='Mck_freqslices', fileprefix='Mck_freqslice', filesuffix='_sub1', 
+                 matname='Rfreq'):
         self.nfreq = nfmax
         self.Ownfreqlist = Ownfreqlist
         self.Totalfreqlist = Totalfreqlist

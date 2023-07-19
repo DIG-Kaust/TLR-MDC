@@ -21,16 +21,16 @@ export STORE_PATH=$STORE_PATH
 # Run experiments
 
 ## Dense
-mpirun -np 2 python $TLRMDCROOT/mdctlr/MDC.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType Dense --nfmax 5 --repeat 10 --debug
+mpirun -np 2 python $TLRMDCROOT/app/MDC.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType Dense --nfmax 5 --repeat 10 --debug
 
 ## TLR-FP16-Normal
-mpirun -np 2 python $TLRMDCROOT/mdctlr/MDC.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType fp16 \
+mpirun -np 2 python $TLRMDCROOT/app/MDC.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType fp16 \
   --ModeValue 8 --OrderType normal --nfmax 100 --repeat 10 --debug
 
 ## TLR-FP16-Hilbert
-mpirun -np 2 python $TLRMDCROOT/mdctlr/MDC.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType fp16 \
+mpirun -np 2 python $TLRMDCROOT/app/MDC.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType fp16 \
   --ModeValue 8 --OrderType hilbert --repeat 10 --debug
 
 ## TLR-I8-Hilbert
-mpirun -np 2 python $TLRMDCROOT/mdctlr/MDC.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType int8 \
+mpirun -np 2 python $TLRMDCROOT/app/MDC.py --AuxFile 3DMarchenko_auxiliary_2.npz --MVMType TLR --TLRType int8 \
   --ModeValue 8 --OrderType hilbert --repeat 10 --debug

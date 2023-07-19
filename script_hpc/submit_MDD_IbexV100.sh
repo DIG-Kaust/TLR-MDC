@@ -23,6 +23,10 @@ export PYTHONDONTWRITEBYTECODE=1 # disable generation of __pycache__ folder
 export STORE_PATH=/ibex/ai/home/ravasim/ravasim_OLDscratch/MDC-TLRMVM/
 export FIG_PATH=/home/ravasim/2022/Projects/MDC_TLRMVM_v2/Figs
 
+# run the application (Dense):
+mpirun -np 4 python $TLRMDCROOT/app/MDD.py --AuxFile 3DMDD_aux.npz --M 9801 --N 2911 --MVMType Dense \
+  --nfmax 150 --ivsinv 880 --debug
+
 # run the application (TLR-FP16-Normal):
 mpirun -np 4 python $TLRMDCROOT/app/MDD.py --AuxFile 3DMDD_aux.npz --M 9801 --N 2911 --MVMType TLR --TLRType fp16 \
   --nb 128 --ModeValue 4 --OrderType normal --nfmax 150 --ivsinv 880 --debug

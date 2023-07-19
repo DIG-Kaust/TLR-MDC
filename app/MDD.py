@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import zarr
 
 from os.path import join, exists
+
 from time import sleep
 from dotenv import load_dotenv
 from scipy.signal import convolve
@@ -24,6 +25,8 @@ from pylops.utils.tapers import *
 from mdctlr.inversiondist import MDCmixed
 from mdctlr.lsqr import lsqr
 from mdctlr.tlrmvm.tilematrix import TilematrixGPU
+from mdctlr.densemvm import DenseGPU
+from mdctlr.zigzag import zigzag
 
 
 def main(parser):
@@ -98,27 +101,8 @@ def main(parser):
 
     ######### DEFINE FREQUENCIES TO ASSIGN TO EACH MPI PROCESS #########
     Totalfreqlist = [x for x in range(nfmax)]
-    splitfreqlist = []
-    cnt = 0
-    reverse = False
-    while cnt < nfmax:
-        tmp = []
-        idx = 0
-        while idx < mpisize:
-            tmp.append(cnt)
-            cnt += 1
-            if cnt >= nfmax:
-                break
-            idx += 1
-        if reverse:
-            splitfreqlist.append([x for x in tmp[::-1]])
-        else:
-            splitfreqlist.append([x for x in tmp])
-        reverse = ~reverse
-    Ownfreqlist = []
-    for x in splitfreqlist:
-        if len(x) > mpirank:
-            Ownfreqlist.append(x[mpirank])
+    Ownfreqlist, splitfreqlist = zigzag(0, nfmax, mpisize)
+    Ownfreqlist = Ownfreqlist[mpirank]
     sleep(mpirank * 0.1)
     if mpirank == 0:
         print('Frequencies allocation:')
@@ -160,16 +144,16 @@ def main(parser):
     comm.Barrier()
 
     if args.MVMType == "Dense":
-        # Load dense kernel
-        pass
-        # dev = cp.cuda.Device(mpirank)
-        # dev.use()
-        # t0 = time.time()
-        # mvmops = DenseGPU(Ownfreqlist, Totalfreqlist, splitfreqlist, args.nfmax, STORE_PATH,
-        #                  'Gplus_freqslices', 'Gplus_freqslice', matname='Gplusfreq')
-        # t1 = time.time()
-        # if mpirank == 0:
-        #     print("Init dense GPU Time is ", t1-t0)
+        # Load dense kernel (need to check it...)
+        dev = cp.cuda.Device(mpirank)
+        dev.use()
+        t0 = time.time()
+        mvmops = DenseGPU(Ownfreqlist, Totalfreqlist, splitfreqlist, args.nfmax, STORE_PATH,
+                          foldername='Gplus_freqslices', fileprefix="Gplus_freqslice", filesuffix="_sub1",
+                          matname='Gplusfreq')
+        t1 = time.time()
+        if mpirank == 0:
+            print("Init dense GPU Time is ", t1-t0)
     else:
         # Load TLR kernel
         mvmops = TilematrixGPU(args.M, args.N, args.nb, 

@@ -25,11 +25,11 @@ export FIG_PATH=/home/ravasim/2022/Projects/MDC_TLRMVM_v2/Figs
 
 
 # run the application (Dense) - NOT WORKING YET:
-# mpirun -np 4 python $TLRMDCROOT/app/MDC.py --AuxFile 3DMarchenko_aux.npz --MVMType Dense --nfmax 5 --repeat 10 --debug
+mpirun -np 4 python $TLRMDCROOT/app/MDC.py --AuxFile 3DMarchenko_aux.npz --MVMType Dense --nfmax 50 --repeat 10 --debug
 
 # run the application (TLR-FP16-Normal):
-#mpirun -np 4 python $TLRMDCROOT/app/MDC.py --AuxFile 3DMarchenko_aux.npz --MVMType TLR --TLRType fp16 \
-#  --ModeValue 8 --OrderType normal --repeat 10 --debug
+mpirun -np 4 python $TLRMDCROOT/app/MDC.py --AuxFile 3DMarchenko_aux.npz --MVMType TLR --TLRType fp16 \
+  --ModeValue 8 --OrderType normal --repeat 10 --debug
   
 # run the application (TLR-FP16-Hilbert):
 mpirun -np 4 python $TLRMDCROOT/app/MDC.py --AuxFile 3DMarchenko_aux.npz --MVMType TLR --TLRType fp16 \

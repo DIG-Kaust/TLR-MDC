@@ -1,14 +1,14 @@
-
-__all__ = ['lsqr']
 import numpy as np
 from math import sqrt
 from scipy.sparse.linalg.interface import aslinearoperator
 
-eps = np.finfo(np.float64).eps
 import os
 from mpi4py import MPI
 from os.path import join, exists
 import time
+
+eps = np.finfo(np.float64).eps
+
 
 def _sym_ortho(a, b):
     if b == 0:
@@ -27,7 +27,7 @@ def _sym_ortho(a, b):
         r = a / c
     return c, s, r
 
-import time
+
 def lsqr(A, b, damp=0.0, atol=1e-8, btol=1e-8, conlim=1e8,
     iter_lim=None, show=False, calc_var=False, x0=None, FIG_PATH=None):
     comm = MPI.COMM_WORLD
@@ -133,8 +133,6 @@ def lsqr(A, b, damp=0.0, atol=1e-8, btol=1e-8, conlim=1e8,
         print(str1, str2, str3)
 
     # Main iteration loop.
-
-
     while itn < iter_lim:
         comm.Barrier()
         tstart = time.time()
