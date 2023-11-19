@@ -31,7 +31,7 @@ and create the environment with the following command:
 
 Simply run:
 ```
-./install_env.sh
+conda env create -f mdctlr.yml
 ```
 
 After that you can simply install the ``mdctlr`` package via:
