@@ -1,0 +1,37 @@
+[build-system]
+requires = [
+    "setuptools >= 65",
+    "setuptools_scm[toml]",
+    "wheel",
+]
+
+[project]
+name = "mdctlr"
+authors = [
+    {name = "Matteo Ravasi", email = "matteo.ravasi@kaust.edu.sa"},
+]
+description = "Tile-Low Rank Multi-Dimensional Convolution: fast MDC modelling and inversion for seismic applications"
+readme = "README.md"
+requires-python = ">=3.8"
+keywords = ["inverse problems", "seismic", "hpc"]
+classifiers = [
+        "Intended Audience :: Science/Research",
+        "Natural Language :: English",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Topic :: Scientific/Engineering :: Mathematics",
+    ]
+dependencies = [
+        "numpy >= 1.15.0",
+        "scipy >= 1.15.0",
+		"matplotlib",
+   		"pymorton",
+    	"hilbertcurve",
+    	"mpi4py",
+        "pylops == 1.18.3",
+
+    ]
+dynamic = ["version"]
+
+[tool.setuptools.packages]
+find = {}

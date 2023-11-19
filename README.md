@@ -24,12 +24,27 @@ This repository is organized as follows:
 
 ## Installation instructions
 
-TO BE UPDATED!
+To get started, you must first install the `tlrmvm` library. Follow the instruction provided in the official GitHub repository of the library.
+
+After that, you will need to create a python environment with the required dependencies to run codes in this repository. We suggest using conda
+and create the environment with the following command:
+
+Simply run:
+```
+./install_env.sh
+```
+
+After that you can simply install the ``mdctlr`` package via:
+```
+pip install .
+```
+or in developer mode:
+```
+pip install -e .
+```
+
 
 We also have an installation video on [Youtube](https://www.youtube.com/watch?v=ERRvsPTSn1M) - OUTDATED!
-
-It will also guide you how to run the application.
-
 
 ## Applications and inputs
 

@@ -9,7 +9,8 @@ dependencies:
   - numpy
   - scipy
   - matplotlib
-  - pylops
+  - zarr
+  - pylops=1.18.3
   - ipython
   - jupyter
   - pip:
@@ -18,3 +19,5 @@ dependencies:
     - pymorton
     - mpi4py
     - cupy-cuda115
+    - setuptools_scm
+
