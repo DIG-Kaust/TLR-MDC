@@ -24,7 +24,6 @@ from pylops.utils.wavelets import *
 from pylops.utils.tapers import *
 from mdctlr.inversiondist import MDCmixed
 from mdctlr.lsqr import lsqr
-from mdctlr.tlrmvm.tilematrix import TilematrixGPU
 from mdctlr.densemvm import DenseGPU
 from mdctlr.zigzag import zigzag
 
@@ -33,8 +32,6 @@ def main(parser):
 
     ######### INPUT PARAMS #########
     parser.add_argument("--AuxFile", type=str, default="AuxFile.npz", help="File with Auxiliar information for Mck redatuming")
-    parser.add_argument("--MVMType", type=str, default="Dense", help="Type of MVM: Dense, TLR")
-    parser.add_argument("--TLRType", type=str, default="fp32", help="TLR Precision: fp32, fp16, fp16int8, int8")
     parser.add_argument("--bandlen", type=int, default=10, help="TLR Band length")
     parser.add_argument("--nfmax", type=int, default=150, help="TLR Number of frequencies")
     parser.add_argument("--OrderType", type=str, default="normal", help="Matrix reordering method: normal, l1, hilbert")
@@ -65,15 +62,7 @@ def main(parser):
     ######### DEFINE DATA AND FIGURES DIRECTORIES #########
     STORE_PATH=os.environ["STORE_PATH"]
     FIG_PATH=os.environ["FIG_PATH"]
-    if args.MVMType != "Dense":
-        if args.TLRType != 'fp16int8':
-            args.MVMType = "TLR" + args.TLRType
-            TARGET_FIG_PATH = join(FIG_PATH, f"MDD_MVMType{args.MVMType}_OrderType{args.OrderType}_Mode{args.ModeValue}")
-        else:
-            args.MVMType = "TLR" + args.TLRType + "_bandlen{bandlen}"
-            TARGET_FIG_PATH = join(FIG_PATH, f"MDD_MVMType{args.MVMType}_OrderType{args.OrderType}_Mode{args.ModeValue}")
-    else:
-        TARGET_FIG_PATH = join(FIG_PATH, f"MDD_MVMType{args.MVMType}")
+    TARGET_FIG_PATH = join(FIG_PATH, f"MDD_MVMTypeDense")
 
     # create figure folder is not available
     if mpirank == 0:
@@ -128,8 +117,6 @@ def main(parser):
     dvsy = vsy[1] - vsy[0]
     ovsy = vsy[0]
     nvs = nvsx * nvsy
-    #ivsx, ivsy = 21, 19
-    #ivsinv = ivsx * nvsy + ivsy
     ivsinv = args.ivsinv
 
     # Time axis
@@ -143,31 +130,17 @@ def main(parser):
         print("-" * 80)
     comm.Barrier()
 
-    if args.MVMType == "Dense":
-        # Load dense kernel
-        dev = cp.cuda.Device(mpirank)
-        dev.use()
-        t0 = time.time()
-        mvmops = DenseGPU(Ownfreqlist, Totalfreqlist, splitfreqlist, args.nfmax, STORE_PATH,
-                          foldername='Gplus_freqslices', fileprefix="Gplus_freqslice", filesuffix="_sub1",
-                          matname='Gplusfreq')
-        t1 = time.time()
-        if mpirank == 0:
-            print("Init dense GPU Time is ", t1-t0)
-    else:
-        # Load TLR kernel
-        mvmops = TilematrixGPU(args.M, args.N, args.nb, 
-                               synthetic=False, datafolder=join(STORE_PATH,'compresseddata'), 
-                               acc=args.threshold, freqlist=Ownfreqlist, order=args.OrderType,
-                               mode=4, prefix="Gplus_freqslice_", suffix="Gplus_freqslice_")
-        mvmops.estimategpumemory()
-        mvmops.loaduvbuffer()
-        mvmops.setcolB(1) # just 1 point
-        
-        mvmops.Ownfreqlist = Ownfreqlist
-        mvmops.Splitfreqlist = splitfreqlist
-        print("-" * 80)
-
+    # Load dense kernel
+    dev = cp.cuda.Device(mpirank)
+    dev.use()
+    t0 = time.time()
+    mvmops = DenseGPU(Ownfreqlist, Totalfreqlist, splitfreqlist, args.nfmax, STORE_PATH,
+                      foldername='Gplus_freqslices', fileprefix="Gplus_freqslice", filesuffix="_sub1",
+                      matname='Gplusfreq')
+    t1 = time.time()
+    if mpirank == 0:
+        print("Init dense GPU Time is ", t1-t0)
+    
     ######### CREATE MDC OPERATOR #########
     if mpirank == 0:
         print('Creating MDC Operator...')
