@@ -153,11 +153,14 @@ def main(parser):
     comm.Barrier()
 
     if args.MVMType == "Dense":
-        # Load dense kernel (need to check it...)
+        # Load dense kernel
         dev = cp.cuda.Device(mpirank)
         dev.use()
         t0 = time.time()
-        mvmops = DenseGPU(Ownfreqlist, Totalfreqlist, splitfreqlist, args.nfmax, STORE_PATH)
+        mvmops = DenseGPU(Ownfreqlist, Totalfreqlist, splitfreqlist, args.nfmax, STORE_PATH,
+                          foldername='Mck_freqslices', fileprefix="Mck_freqslice", filesuffix="_sub1",
+                          matname='Rfreq')
+        
         t1 = time.time()
         if mpirank == 0:
             print("Init dense GPU Time is ", t1-t0)
