@@ -8,7 +8,6 @@
 #SBATCH --time=01:00:00
 #SBATCH --mem=300G
 #SBATCH --gpus=a100:4
-#SBATCH --reservation=A100
 
 ## MDD of Overthrust 3D model, to be run as: sbatch submit_Ove3DMDDFull_IbexV100.sh
 
